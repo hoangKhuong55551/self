@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Dịch vụ Định kỳ | Life OS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h3 class="fw-bold mb-3">Dịch vụ & Hóa đơn Định kỳ</h3>
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Dịch vụ</th>
+                            <th>Ví thanh toán</th>
+                            <th>Chu kỳ</th>
+                            <th>Kỳ tiếp theo</th>
+                            <th class="text-end">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in subscriptions %}
+                        <tr>
+                            <td>
+                                <strong>{{ s.name }}</strong>
+                                {% if s.url %}<a href="{{ s.url }}" target="_blank" class="ms-1 text-muted small"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                            </td>
+                            <td>{{ s.wallet.name }}</td>
+                            <td><span class="badge bg-secondary">{{ s.get_billing_cycle_display }}</span></td>
+                            <td>{{ s.next_billing_date|date:"d/m/Y" }}</td>
+                            <td class="text-end fw-bold text-danger">-{{ s.amount|floatformat:0 }} đ</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">Chưa có gói dịch vụ nào.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <h5 class="fw-bold mb-3">Thêm dịch vụ định kỳ</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tên dịch vụ</label>
+                    {{ form.name }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Chi phí</label>
+                    {{ form.amount }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ví thanh toán</label>
+                    {{ form.wallet }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Danh mục</label>
+                    {{ form.category }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Chu kỳ thanh toán</label>
+                    {{ form.billing_cycle }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ngày bắt đầu</label>
+                    {{ form.start_date }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Kỳ hạn kế tiếp</label>
+                    {{ form.next_billing_date }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">URL / Ghi chú</label>
+                    {{ form.url }}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Lưu dịch vụ</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Wishlist & Mục tiêu mua sắm | Life OS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h3 class="fw-bold mb-3">Mục tiêu Mua sắm (Wishlist)</h3>
+        <div class="row g-3">
+            {% for item in items %}
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 p-3 h-100 {% if item.is_purchased %}bg-light opacity-75{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="fw-bold mb-0">{{ item.name }}</h5>
+                        <span class="badge {% if item.is_purchased %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                            {% if item.is_purchased %}Đã mua{% else %}{{ item.get_priority_display }}{% endif %}
+                        </span>
+                    </div>
+                    <h4 class="text-primary fw-bold my-2">{{ item.price|floatformat:0 }} đ</h4>
+                    <p class="text-muted small mb-2">{{ item.description|default:"Không có mô tả" }}</p>
+
+                    {% if not item.is_purchased %}
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Khả năng chi trả:</span>
+                            <strong>{{ item.affordability }}%</strong>
+                        </div>
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: {{ item.affordability }}%;"></div>
+                        </div>
+                        <a href="{% url 'finance:wishlist_purchase' item.pk %}"
+                           class="btn btn-sm btn-outline-success w-100"
+                           onclick="return confirm('Xác nhận mua món đồ này? Sẽ tự động tạo chi tiêu và chuyển sang Tài sản.')">
+                            <i class="bi bi-cart-check"></i> Đánh dấu đã mua
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="mt-auto text-success small">
+                        <i class="bi bi-check2-all"></i> Đã mua vào ngày {{ item.purchased_date|date:"d/m/Y" }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-4 text-muted">
+                Danh sách mong muốn đang trống. Hãy thêm món đồ bạn muốn mua!
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <h5 class="fw-bold mb-3">Thêm món đồ muốn mua</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tên món đồ</label>
+                    {{ form.name }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Giá dự kiến (VND)</label>
+                    {{ form.price }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mức độ ưu tiên</label>
+                    {{ form.priority }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Dự kiến chi từ ví</label>
+                    {{ form.wallet }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ngày mục tiêu</label>
+                    {{ form.target_date }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Link tham khảo</label>
+                    {{ form.url }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ghi chú</label>
+                    {{ form.description }}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Thêm vào Wishlist</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

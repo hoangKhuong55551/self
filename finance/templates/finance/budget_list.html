@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Hạn mức Ngân sách | Life OS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h3 class="fw-bold mb-3">Ngân sách tháng {{ today|date:"m/Y" }}</h3>
+        <div class="row g-3">
+            {% for b in budgets %}
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="fw-bold mb-0">{{ b.category.name }}</h5>
+                        <span class="badge {% if b.is_over_budget %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ b.percent_used }}%
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-muted small">Đã chi / Hạn mức:</span>
+                        <div class="fw-bold fs-5">{{ b.spent|floatformat:0 }} / {{ b.amount|floatformat:0 }} đ</div>
+                    </div>
+                    <div class="progress mb-2" style="height: 10px;">
+                        <div class="progress-bar {% if b.is_over_budget %}bg-danger{% elif b.percent_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                             style="width: {{ b.percent_used }}%;"></div>
+                    </div>
+                    {% if b.is_over_budget %}
+                    <small class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Đã vượt {{ b.spent|add:"-"|add:b.amount|floatformat:0 }} đ!</small>
+                    {% else %}
+                    <small class="text-success">Còn lại: {{ b.remaining|floatformat:0 }} đ</small>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-4 text-muted">
+                Chưa có hạn mức nào trong tháng này.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <h5 class="fw-bold mb-3">Thiết lập ngân sách</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Danh mục chi tiêu</label>
+                    {{ form.category }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hạn mức (VND)</label>
+                    {{ form.amount }}
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Tháng</label>
+                        {{ form.month }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Năm</label>
+                        {{ form.year }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Lưu hạn mức</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

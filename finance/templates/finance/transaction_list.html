@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Lịch sử Giao dịch | Life OS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h3 class="fw-bold mb-3">Lịch sử Giao dịch</h3>
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ngày</th>
+                            <th>Ví</th>
+                            <th>Danh mục</th>
+                            <th>Ghi chú</th>
+                            <th class="text-end">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transactions %}
+                        <tr>
+                            <td>{{ t.date|date:"d/m/Y" }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ t.wallet.name }}</span></td>
+                            <td>{{ t.category.name|default:"Chưa phân loại" }}</td>
+                            <td>
+                                {{ t.note }}
+                                {% if t.source == 'subscription' %}<span class="badge bg-warning text-dark ms-1">Định kỳ</span>{% endif %}
+                                {% if t.source == 'wishlist' %}<span class="badge bg-info text-dark ms-1">Wishlist</span>{% endif %}
+                            </td>
+                            <td class="text-end fw-bold {% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|floatformat:0 }} đ
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">Chưa có giao dịch nào.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <h5 class="fw-bold mb-3">Tạo giao dịch</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Loại giao dịch</label>
+                    {{ form.transaction_type }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Số tiền</label>
+                    {{ form.amount }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ví thanh toán</label>
+                    {{ form.wallet }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Danh mục</label>
+                    {{ form.category }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ngày giao dịch</label>
+                    {{ form.date }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ghi chú</label>
+                    {{ form.note }}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Ghi nhận giao dịch</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

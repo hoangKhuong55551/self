@@ -16,8 +16,9 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link active" href="{% url 'core:dashboard' %}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'core:dashboard' %}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'finance:dashboard' %}"><i class="bi bi-wallet2"></i> Tài chính</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-gear"></i> Admin</a></li>
                 </ul>
                 <div class="d-flex align-items-center text-white">
                     {% if user.is_authenticated %}

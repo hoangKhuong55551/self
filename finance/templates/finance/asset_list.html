@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Tài sản & Dụng cụ | Life OS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-0">Tài sản & Dụng cụ (Gear Lifespan)</h3>
+        <span class="text-muted">Theo dõi trang thiết bị sở hữu, giờ sử dụng và độ hao mòn</span>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for a in assets %}
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold mb-0">{{ a.name }}</h5>
+                <span class="badge {% if a.condition == 'new' %}bg-success{% elif a.condition == 'good' %}bg-primary{% elif a.condition == 'worn' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                    {{ a.get_condition_display }}
+                </span>
+            </div>
+            <div class="text-muted small mb-2">Giá mua: {{ a.purchase_price|floatformat:0 }} đ</div>
+            <p class="small mb-2">{{ a.description|default:"Không có mô tả" }}</p>
+
+            <div class="mt-auto">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Đã sử dụng:</span>
+                    <strong>{{ a.usage_hours|floatformat:1 }}h {% if a.max_lifespan_hours %}/ {{ a.max_lifespan_hours }}h{% endif %}</strong>
+                </div>
+                {% if a.lifespan_percent %}
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar {% if a.needs_replacement %}bg-danger{% elif a.lifespan_percent > 50 %}bg-warning{% else %}bg-success{% endif %}"
+                         style="width: {{ a.lifespan_percent }}%;"></div>
+                </div>
+                {% if a.needs_replacement %}
+                <small class="text-danger fw-bold"><i class="bi bi-wrench-adjustable"></i> Cần bảo dưỡng hoặc thay mới!</small>
+                {% endif %}
+                {% endif %}
+                {% if a.from_wishlist %}
+                <small class="text-muted d-block mt-2"><i class="bi bi-link-45deg"></i> Mua từ Wishlist</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-4 text-muted">
+        Chưa có tài sản hoặc dụng cụ nào. Mua đồ từ Wishlist sẽ tự động chuyển thành tài sản tại đây!
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
