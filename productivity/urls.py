@@ -9,7 +9,7 @@ urlpatterns = [
     path('kanban/', views.kanban_board, name='kanban_board'),
     path('tasks/<int:pk>/status/', views.update_task_status, name='update_task_status'),
     path('habits/', views.habit_tracker, name='habit_tracker'),
-    path('habits/<int:pk>/toggle/', views.toggle_habit_today, name='toggle_habit_today'),
+    path('habits/<int:pk>/toggle/', views.toggle_habit_today, name='toggle_habit'),
     path('pomodoro/', views.pomodoro_timer, name='pomodoro_timer'),
     path('pomodoro/save/', views.save_pomodoro_session, name='save_pomodoro_session'),
 ]

@@ -3,56 +3,134 @@
 {% block title %}Theo dõi Thói quen & Heatmap | Life OS{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-    <div class="col-lg-8">
-        <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">📅 Thói quen Hàng ngày &amp; Lịch sử</h3>
-        <p class="text-muted mb-4 small">Lịch sử hoàn thành thói quen trong 30 ngày gần nhất</p>
+<!-- Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">📅 Thói quen Hàng ngày</h3>
+        <p class="text-muted mb-0 small">Theo dõi streak và lịch sử 30 ngày · Mỗi thói quen là 10 XP</p>
+    </div>
+</div>
 
-        <div class="card p-4 mb-4">
-            <h5 class="fw-bold text-white mb-3"><i class="bi bi-calendar-week me-2 text-primary"></i>Nhật ký Theo dõi (30 ngày)</h5>
+<div class="row g-4">
+    <!-- Left: Habit Heatmap Table -->
+    <div class="col-lg-8">
+
+        <!-- Quick Check-in today -->
+        <div class="card mb-3">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-sun me-2 text-warning"></i><strong class="text-white">Check-in hôm nay</strong> — {{ today|date:"d/m/Y" }}</span>
+                <span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ today|date:"l" }}</span>
+            </div>
+            <div class="card-body">
+                {% if habit_matrix %}
+                <div class="row g-2">
+                    {% for row in habit_matrix %}
+                    <div class="col-sm-6 col-md-4">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded"
+                             style="background: {% if row.history|last %}rgba(16,185,129,0.12){% else %}var(--bg-surface-elevated){% endif %};
+                                    border: 1px solid {% if row.history|last %}rgba(16,185,129,0.3){% else %}var(--border-subtle){% endif %};">
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="font-size: 1.25rem; line-height: 1;">{{ row.habit.icon }}</span>
+                                <div>
+                                    <div class="fw-semibold text-white" style="font-size: 0.82rem;">{{ row.habit.name|truncatechars:20 }}</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">
+                                        🔥 Streak: <strong class="text-warning">{{ row.streak }}</strong> ngày
+                                    </div>
+                                </div>
+                            </div>
+                            <form method="post" action="{% url 'productivity:toggle_habit' row.habit.pk %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="btn btn-sm {% if row.history|last %}btn-success{% else %}btn-outline-secondary{% endif %} py-1 px-2"
+                                        style="font-size: 0.78rem; min-width: 52px;">
+                                    {% if row.history|last %}✅ Xong{% else %}○ Làm{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3 small mb-0">Chưa có thói quen nào. Tạo thói quen đầu tiên bên phải →</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 30-day heatmap grid -->
+        <div class="card p-4">
+            <h5 class="fw-bold text-white mb-3"><i class="bi bi-calendar-week me-2 text-primary"></i>Nhật ký 30 ngày</h5>
             <div class="table-responsive">
-                <table class="table text-center align-middle mb-0" style="font-size: 0.85rem;">
+                <table class="table text-center align-middle mb-0" style="font-size: 0.82rem;">
                     <thead>
                         <tr>
-                            <th class="text-start" style="min-width: 150px;">Thói quen</th>
+                            <th class="text-start" style="min-width: 130px; font-size: 0.72rem;">Thói quen</th>
                             {% for d in days_range %}
-                            <th style="padding: 4px; min-width: 22px;" title="{{ d|date:'d/m/Y' }}">
+                            <th style="padding: 3px; min-width: 20px; font-size: 0.68rem; color: var(--text-dim);" title="{{ d|date:'d/m/Y' }}">
                                 {{ d|date:"d" }}
                             </th>
                             {% endfor %}
+                            <th style="font-size: 0.72rem; color: var(--text-dim); white-space: nowrap;">Streak</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in habit_matrix %}
                         <tr>
-                            <td class="text-start fw-semibold text-white">
-                                {{ row.habit.icon }} {{ row.habit.name }}
+                            <td class="text-start fw-semibold text-white" style="white-space: nowrap;">
+                                {{ row.habit.icon }} {{ row.habit.name|truncatechars:18 }}
                             </td>
                             {% for completed in row.history %}
-                            <td style="padding: 4px;">
+                            <td style="padding: 3px;">
                                 {% if completed %}
-                                <div style="width: 16px; height: 16px; background-color: var(--accent-emerald); border-radius: 3px; margin: auto; box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);" title="Đã xong"></div>
+                                <div style="width: 15px; height: 15px;
+                                            background: {{ row.habit.color }};
+                                            border-radius: 3px; margin: auto;
+                                            box-shadow: 0 0 6px {{ row.habit.color }}55;"
+                                     title="Đã xong"></div>
                                 {% else %}
-                                <div style="width: 16px; height: 16px; background-color: rgba(255, 255, 255, 0.06); border-radius: 3px; margin: auto;" title="Chưa làm"></div>
+                                <div style="width: 15px; height: 15px;
+                                            background-color: rgba(255,255,255,0.06);
+                                            border-radius: 3px; margin: auto;"
+                                     title="Chưa làm"></div>
                                 {% endif %}
                             </td>
                             {% endfor %}
+                            <td>
+                                <span class="badge {% if row.streak >= 7 %}bg-success-subtle text-success{% elif row.streak >= 3 %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-muted{% endif %}">
+                                    🔥 {{ row.streak }}
+                                </span>
+                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="31" class="text-muted py-5 small">Chưa có thói quen nào.</td>
+                            <td colspan="32" class="text-muted py-5 small text-center">Chưa có thói quen nào. Tạo thói quen mới ở bên phải →</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            <!-- Legend -->
+            <div class="d-flex align-items-center gap-3 mt-3" style="font-size: 0.78rem; color: var(--text-muted);">
+                <div class="d-flex align-items-center gap-1">
+                    <div style="width:12px;height:12px;background:rgba(255,255,255,0.06);border-radius:2px;"></div>
+                    Chưa làm
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <div style="width:12px;height:12px;background:var(--accent-emerald);border-radius:2px;"></div>
+                    Đã hoàn thành
+                </div>
+                <div class="d-flex align-items-center gap-1">🔥 Streak liên tiếp</div>
+            </div>
         </div>
     </div>
+
+    <!-- Right: Create habit form -->
     <div class="col-lg-4">
         <div class="card p-4">
             <h5 class="fw-bold mb-3 text-white"><i class="bi bi-plus-circle me-2 text-primary"></i>Tạo thói quen mới</h5>
             <form method="post">
                 {% csrf_token %}
+                <input type="hidden" name="create_habit" value="1">
                 <div class="mb-3">
                     <label class="form-label">Tên thói quen</label>
                     {{ form.name }}
@@ -80,6 +158,26 @@
                 <button type="submit" class="btn btn-primary w-100 py-2">Khởi tạo thói quen</button>
             </form>
         </div>
+
+        <!-- Top streaks leaderboard -->
+        {% if habit_matrix %}
+        <div class="card mt-3 p-3">
+            <h6 class="fw-bold text-white mb-3"><i class="bi bi-trophy me-2 text-warning"></i>Streak tốt nhất</h6>
+            {% for row in habit_matrix|dictsortreversed:"streak" %}
+            {% if forloop.counter <= 5 %}
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size: 1.1rem;">{{ row.habit.icon }}</span>
+                    <span class="text-white small">{{ row.habit.name|truncatechars:22 }}</span>
+                </div>
+                <span class="badge {% if row.streak >= 7 %}bg-success-subtle text-success{% elif row.streak >= 3 %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-muted{% endif %}">
+                    🔥 {{ row.streak }} ngày
+                </span>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

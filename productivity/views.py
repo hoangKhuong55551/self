@@ -86,6 +86,7 @@ def kanban_board(request):
         'done_tasks': done_tasks,
         'form': form,
         'has_goals': user_goals.exists(),
+        'today_str': timezone.now().date().isoformat(),
     }
     return render(request, 'productivity/kanban_board.html', context)
 
@@ -159,7 +160,7 @@ def toggle_habit_today(request, pk):
     """Đánh dấu hoàn thành/hủy hoàn thành habit hôm nay."""
     habit = get_object_or_404(Habit, pk=pk, user=request.user)
     today = timezone.now().date()
-    log, created = HabitLog.objects.get_or_ajax_create = HabitLog.objects.get_or_create(
+    log, created = HabitLog.objects.get_or_create(
         habit=habit, date=today,
         defaults={'count': habit.target_per_day, 'completed': True}
     )
@@ -172,13 +173,12 @@ def toggle_habit_today(request, pk):
     else:
         log.save()
 
-    return JsonResponse({
-        'success': True,
-        'completed': log.completed,
-        'streak': habit.current_streak,
-        'user_xp': request.user.profile.xp,
-    })
-
+    # Thưởng 10 XP khi check-in thành công
+    if log.completed:
+        request.user.profile.add_xp(10)
+        messages.success(request, f"🔥 +10 XP! Đã check-in: {habit.name}")
+    
+    return redirect('productivity:habit_tracker')
 
 # --- POMODORO TIMER ---
 @login_required

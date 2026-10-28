@@ -1,0 +1,79 @@
+{% load core_tags %}
+{% comment %}
+Reusable Kanban task card partial.
+Variables: task, show_start (bool)
+{% endcomment %}
+{% with task as t %}
+<div class="kanban-card card mb-2 p-3 {% if t.status == 'done' %}opacity-75{% endif %}"
+     data-task-id="{{ t.pk }}"
+     style="background: var(--bg-surface-elevated);
+            {% if t.status == 'in_progress' %}border-left: 3px solid var(--accent-primary) !important;{% endif %}
+            {% if t.status == 'done' %}border-left: 3px solid var(--accent-emerald) !important;{% endif %}">
+
+    <!-- Top row: quadrant badge + pomodoro counter -->
+    <div class="d-flex justify-content-between align-items-start mb-1">
+        {% if t.status == 'done' %}
+        <span class="badge bg-success-subtle text-success small">✅ Đã xong</span>
+        {% else %}
+        <span class="badge bg-dark-subtle border border-dark-subtle text-muted small"
+              style="font-size: 0.68rem;">{{ t.get_quadrant_display }}</span>
+        {% endif %}
+        <small class="text-muted">
+            <i class="bi bi-stopwatch"></i> {{ t.actual_pomodoros }}/{{ t.estimated_pomodoros }}
+        </small>
+    </div>
+
+    <!-- Title -->
+    <h6 class="fw-bold mb-1 mt-1 {% if t.status == 'done' %}text-decoration-line-through text-muted{% else %}text-white{% endif %}">
+        {{ t.title }}
+    </h6>
+
+    <!-- Goal -->
+    <small class="text-muted mb-1 d-block" style="font-size: 0.78rem;">
+        🎯 {{ t.goal.title|truncatechars:35 }}
+    </small>
+
+    <!-- Due date (with overdue warning) -->
+    {% if t.due_date %}
+    <small class="d-block mb-2
+        {% if t.status != 'done' and t.due_date|date:'Y-m-d' < today_str %}text-danger fw-bold
+        {% elif t.status != 'done' and t.due_date|date:'Y-m-d' == today_str %}text-warning fw-bold
+        {% else %}text-muted{% endif %}"
+        style="font-size: 0.78rem;">
+        <i class="bi bi-calendar-event me-1"></i>
+        {% if t.status != 'done' and t.due_date|date:'Y-m-d' < today_str %}
+            ⚠️ Quá hạn: {{ t.due_date|date:"d/m/Y" }}
+        {% elif t.status != 'done' and t.due_date|date:'Y-m-d' == today_str %}
+            ⏰ Hôm nay: {{ t.due_date|date:"d/m/Y" }}
+        {% else %}
+            {{ t.due_date|date:"d/m/Y" }}
+        {% endif %}
+    </small>
+    {% endif %}
+
+    <!-- Action buttons -->
+    <div class="d-flex justify-content-between align-items-center gap-1 mt-2">
+        {% if t.status == 'todo' %}
+        <button class="btn btn-sm btn-outline-primary py-0 px-2"
+                onclick="setTaskStatus({{ t.pk }}, 'in_progress')" style="font-size: 0.78rem;">
+            Bắt đầu →
+        </button>
+        {% elif t.status == 'in_progress' %}
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                onclick="setTaskStatus({{ t.pk }}, 'todo')" style="font-size: 0.78rem;">
+            ← Hoãn
+        </button>
+        <button class="btn btn-sm btn-success py-0 px-2"
+                onclick="setTaskStatus({{ t.pk }}, 'done')" style="font-size: 0.78rem;">
+            Xong ✓
+        </button>
+        {% elif t.status == 'done' %}
+        <small class="text-muted" style="font-size: 0.75rem;">{{ t.completed_at|date:"d/m H:i" }}</small>
+        <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                onclick="setTaskStatus({{ t.pk }}, 'todo')" style="font-size: 0.78rem;">
+            Hoàn tác
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endwith %}
