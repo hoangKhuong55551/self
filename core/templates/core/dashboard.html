@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | Life OS{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold">Tổng quan tuần ({{ week_start|date:"d/m" }} - {{ week_end|date:"d/m/Y" }})</h2>
+        <p class="text-muted">Theo dõi toàn diện tài chính, công việc, thói quen và học tập.</p>
+    </div>
+</div>
+
+<!-- Stats Card Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-primary text-white p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-uppercase mb-1">Tổng số dư ví</h6>
+                    <h3 class="fw-bold mb-0">{{ total_balance|floatformat:0 }} đ</h3>
+                </div>
+                <i class="bi bi-wallet2 fs-1 opacity-50"></i>
+            </div>
+            <small class="mt-2 text-white-50">Tiết kiệm tuần: {{ savings_this_week|floatformat:0 }} đ</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-success text-white p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-uppercase mb-1">Tasks hoàn thành</h6>
+                    <h3 class="fw-bold mb-0">{{ tasks_completed }}</h3>
+                </div>
+                <i class="bi bi-check2-circle fs-1 opacity-50"></i>
+            </div>
+            <small class="mt-2 text-white-50">{{ habits_completed }} lượt thói quen xong</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-warning text-dark p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-uppercase mb-1">Giờ tập trung</h6>
+                    <h3 class="fw-bold mb-0">{{ focus_hours }}h</h3>
+                </div>
+                <i class="bi bi-clock-history fs-1 opacity-50"></i>
+            </div>
+            <small class="mt-2 text-muted">{{ pomodoro_sessions }} phiên Pomodoro</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-info text-dark p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-uppercase mb-1">GPA hiện tại</h6>
+                    <h3 class="fw-bold mb-0">{{ current_gpa }}</h3>
+                </div>
+                <i class="bi bi-mortarboard fs-1 opacity-50"></i>
+            </div>
+            <small class="mt-2 text-dark-50">Học kỳ hiện tại</small>
+        </div>
+    </div>
+</div>
+
+<!-- Gamification Bar -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold">Cấp độ {{ level }} (Streak: {{ longest_streak }} ngày 🔥)</span>
+            <span>{{ xp_progress }}% tới Lv.{{ level|add:1 }}</span>
+        </div>
+        <div class="progress" style="height: 12px;">
+            <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ xp_progress }}%;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Row -->
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 fw-bold">Chi tiêu & Ngân sách</h5>
+            </div>
+            <div class="card-body">
+                <p>Tổng thu tuần: <strong class="text-success">{{ total_income|floatformat:0 }} đ</strong></p>
+                <p>Tổng chi tuần: <strong class="text-danger">{{ total_expense|floatformat:0 }} đ</strong></p>
+                {% if overbudget_categories %}
+                    <div class="alert alert-danger py-2 mt-3">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Có {{ overbudget_categories|length }} danh mục vượt ngân sách! (-HP)
+                    </div>
+                {% else %}
+                    <div class="alert alert-success py-2 mt-3">
+                        <i class="bi bi-shield-check"></i> Các ngân sách tháng đang trong mức an toàn!
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 fw-bold">Trạng thái nhân vật & Gamification</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label d-flex justify-content-between">
+                        <span>Máu (HP):</span>
+                        <strong>{{ hp }}/100</strong>
+                    </label>
+                    <div class="progress" style="height: 15px;">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ hp }}%;"></div>
+                    </div>
+                </div>
+                <p class="text-muted small">
+                    💡 <em>Gợi ý:</em> Hoàn thành Task (+10 đến +30 XP), Hoàn thành thói quen (+5 XP). Nếu chi tiêu vượt ngân sách trong tháng sẽ bị trừ HP!
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
