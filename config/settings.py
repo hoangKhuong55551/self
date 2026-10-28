@@ -54,6 +54,12 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.user_profile_context',
             ],
+            'libraries': {
+                'core_tags': 'core.templatetags.core_tags',
+            },
+            'builtins': [
+                'core.templatetags.core_tags',
+            ],
         },
     },
 ]
