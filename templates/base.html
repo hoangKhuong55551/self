@@ -28,9 +28,13 @@
                         <span class="badge bg-danger me-2">HP: {{ profile.hp }}/100</span>
                         <span class="badge bg-primary me-3">XP: {{ profile.xp }}</span>
                         <span class="me-3 fw-bold">{{ user.username }}</span>
-                        <a href="/admin/logout/" class="btn btn-outline-light btn-sm">Đăng xuất</a>
+                        <form action="{% url 'logout' %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-light btn-sm">Đăng xuất</button>
+                        </form>
                     {% else %}
-                        <a href="/admin/login/" class="btn btn-primary btn-sm">Đăng nhập</a>
+                        <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2">Đăng nhập</a>
+                        <a href="{% url 'core:register' %}" class="btn btn-primary btn-sm">Đăng ký</a>
                     {% endif %}
                 </div>
             </div>

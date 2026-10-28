@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Đăng nhập | Life OS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow border-0 p-4">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold">🚀 Life OS</h3>
+                <span class="text-muted">Đăng nhập vào hệ điều hành cuộc sống của bạn</span>
+            </div>
+
+            {% if form.errors %}
+            <div class="alert alert-danger py-2 small">
+                Tên đăng nhập hoặc mật khẩu không chính xác.
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tên đăng nhập</label>
+                    <input type="text" name="username" class="form-control" required autofocus placeholder="username">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mật khẩu</label>
+                    <input type="password" name="password" class="form-control" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Đăng nhập</button>
+            </form>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">Chưa có tài khoản? <a href="{% url 'core:register' %}">Đăng ký ngay</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
