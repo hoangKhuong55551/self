@@ -3,68 +3,76 @@
 {% block title %}Hiệu suất & Thói quen | Life OS{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
-        <h2 class="fw-bold mb-0">🚀 Hiệu suất & Thói quen</h2>
-        <span class="text-muted">Quản trị mục tiêu OKRs, bảng Kanban, chuỗi Streak và bấm giờ Pomodoro</span>
+        <h2 class="fw-bold mb-1" style="letter-spacing: -0.02em;">🚀 Hiệu suất &amp; Thói quen</h2>
+        <p class="text-muted mb-0">Quản trị mục tiêu OKRs, bảng Kanban, chuỗi Streak và bấm giờ Pomodoro</p>
     </div>
-    <div class="btn-group">
-        <a href="{% url 'productivity:kanban_board' %}" class="btn btn-primary"><i class="bi bi-kanban"></i> Bảng Kanban</a>
-        <a href="{% url 'productivity:goal_list' %}" class="btn btn-outline-secondary"><i class="bi bi-bullseye"></i> Mục tiêu OKR</a>
-        <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-outline-secondary"><i class="bi bi-fire"></i> Thói quen & Streak</a>
-        <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-outline-danger"><i class="bi bi-stopwatch"></i> Pomodoro</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'productivity:kanban_board' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-kanban me-1"></i> Bảng Kanban
+        </a>
+        <a href="{% url 'productivity:goal_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-bullseye me-1"></i> Mục tiêu OKR
+        </a>
+        <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-fire me-1"></i> Thói quen &amp; Streak
+        </a>
+        <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-stopwatch me-1"></i> Pomodoro
+        </a>
     </div>
 </div>
 
 <div class="row g-4">
     <!-- Cột trái: Goals & Tiến độ OKRs -->
     <div class="col-lg-7">
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">🎯 Mục tiêu đang triển khai</h5>
-                <a href="{% url 'productivity:goal_list' %}" class="btn btn-sm btn-outline-primary">+ Mục tiêu mới</a>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bullseye me-2 text-primary"></i>Mục tiêu đang triển khai</span>
+                <a href="{% url 'productivity:goal_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">+ Mục tiêu mới &rarr;</a>
             </div>
             <div class="card-body">
                 {% for g in goals %}
                 <div class="mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <div>
-                            <h6 class="fw-bold mb-0">{{ g.title }}</h6>
-                            <small class="text-muted">{{ g.tasks.all|length }} công việc con {% if g.deadline %}| Hạn chót: {{ g.deadline|date:"d/m/Y" }}{% endif %}</small>
+                            <h6 class="fw-bold text-white mb-0">{{ g.title }}</h6>
+                            <small class="text-muted">{{ g.tasks.all|length }} công việc con {% if g.deadline %}&bull; Hạn chót: {{ g.deadline|date:"d/m/Y" }}{% endif %}</small>
                         </div>
-                        <span class="badge {% if g.status == 'completed' %}bg-success{% elif g.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %}">
+                        <span class="badge {% if g.status == 'completed' %}bg-success-subtle text-success{% elif g.status == 'in_progress' %}bg-primary-subtle text-primary{% else %}bg-secondary-subtle text-muted{% endif %}">
                             {{ g.progress|floatformat:0 }}%
                         </span>
                     </div>
-                    <div class="progress" style="height: 10px;">
-                        <div class="progress-bar progress-bar-striped {% if g.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar {% if g.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
                              style="width: {{ g.progress }}%;"></div>
                     </div>
                 </div>
                 {% empty %}
-                <p class="text-muted text-center py-3">Chưa có mục tiêu nào. Hãy thiết lập mục tiêu lớn của bạn!</p>
+                <p class="text-muted text-center py-4 small">Chưa có mục tiêu nào. Hãy thiết lập mục tiêu lớn của bạn!</p>
                 {% endfor %}
             </div>
         </div>
 
         <!-- Nhiệm vụ đang làm dở -->
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">📋 Việc cần làm hôm nay</h5>
-                <a href="{% url 'productivity:kanban_board' %}" class="btn btn-sm btn-outline-primary">Mở Kanban</a>
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-task me-2 text-warning"></i>Việc cần làm hôm nay</span>
+                <a href="{% url 'productivity:kanban_board' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Mở Kanban &rarr;</a>
             </div>
             <div class="list-group list-group-flush">
                 {% for t in tasks_in_progress %}
                 <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <div>
-                        <span class="badge bg-warning text-dark me-2">Đang làm</span>
-                        <strong>{{ t.title }}</strong>
-                        <small class="text-muted d-block mt-1">Mục tiêu: {{ t.goal.title }} | Dự kiến: {{ t.estimated_pomodoros }} Pomodoro</small>
+                        <span class="badge bg-warning-subtle text-warning me-2">Đang làm</span>
+                        <strong class="text-white">{{ t.title }}</strong>
+                        <small class="text-muted d-block mt-1">Mục tiêu: {{ t.goal.title }} &bull; Dự kiến: {{ t.estimated_pomodoros }} Pomodoro</small>
                     </div>
-                    <button class="btn btn-sm btn-outline-success" onclick="quickCompleteTask({{ t.pk }})">Xong</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="quickCompleteTask({{ t.pk }})">Xong ✓</button>
                 </div>
                 {% empty %}
-                <div class="list-group-item text-center text-muted py-3">Không có việc nào đang dở dang.</div>
+                <div class="list-group-item text-center text-muted py-4 small">Không có việc nào đang dở dang.</div>
                 {% endfor %}
             </div>
         </div>
@@ -73,17 +81,17 @@
     <!-- Cột phải: Thói quen hôm nay & Pomodoro Shortcut -->
     <div class="col-lg-5">
         <!-- Thói quen trong ngày -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">🔥 Thói quen hôm nay ({{ today|date:"d/m" }})</h5>
-                <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-sm btn-outline-primary">Xem Heatmap</a>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-fire me-2 text-danger"></i>Thói quen hôm nay ({{ today|date:"d/m" }})</span>
+                <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Xem Heatmap &rarr;</a>
             </div>
             <div class="list-group list-group-flush">
                 {% for item in today_habits %}
                 <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <div>
                         <span class="fs-5 me-2">{{ item.habit.icon }}</span>
-                        <strong>{{ item.habit.name }}</strong>
+                        <strong class="text-white">{{ item.habit.name }}</strong>
                         <small class="text-muted d-block ms-4">Streak: {{ item.habit.current_streak }} ngày liên tiếp 🔥</small>
                     </div>
                     <button class="btn btn-sm {% if item.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
@@ -93,17 +101,20 @@
                     </button>
                 </div>
                 {% empty %}
-                <div class="list-group-item text-center text-muted py-3">Chưa thiết lập thói quen nào.</div>
+                <div class="list-group-item text-center text-muted py-4 small">Chưa thiết lập thói quen nào.</div>
                 {% endfor %}
             </div>
         </div>
 
         <!-- Pomodoro Quick Box -->
-        <div class="card shadow-sm border-0 bg-dark text-white p-4 text-center">
-            <h5 class="fw-bold mb-2">Đồng hồ Tập trung (Pomodoro)</h5>
-            <p class="text-muted small">Mỗi phiên 25 phút giúp tăng sự tập trung và nhận +15 XP!</p>
-            <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-danger btn-lg mt-2">
-                <i class="bi bi-play-circle-fill"></i> Bắt đầu phiên tập trung
+        <div class="card p-4 text-center" style="background: linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(17, 24, 39, 0.9)); border: 1px solid rgba(244, 63, 94, 0.25);">
+            <div class="kpi-icon-wrap mx-auto mb-3" style="width: 56px; height: 56px; font-size: 1.8rem; color: var(--accent-rose);">
+                <i class="bi bi-stopwatch"></i>
+            </div>
+            <h5 class="fw-bold text-white mb-2">Đồng hồ Tập trung (Pomodoro)</h5>
+            <p class="text-muted small mb-3">Mỗi phiên 25 phút giúp tăng cường sự tập trung và nhận ngay +15 XP!</p>
+            <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-danger btn-sm py-2">
+                <i class="bi bi-play-circle-fill me-1"></i> Bắt đầu phiên tập trung
             </a>
         </div>
     </div>

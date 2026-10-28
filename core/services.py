@@ -85,6 +85,10 @@ def get_weekly_dashboard(user):
     # --- GAMIFICATION ---
     profile = user.profile
 
+    # Recent activities (Tasks + Transactions)
+    recent_tasks = Task.objects.filter(goal__user=user).select_related('goal').order_by('-updated_at' if hasattr(Task, 'updated_at') else '-id')[:5]
+    recent_txns = weekly_transactions.select_related('category', 'wallet').order_by('-date', '-created_at')[:5]
+
     return {
         # Finance
         'total_balance': total_balance,
@@ -93,12 +97,15 @@ def get_weekly_dashboard(user):
         'total_expense': finance_summary['total_expense'] or 0,
         'transaction_count': finance_summary['transaction_count'],
         'overbudget_categories': overbudget_categories,
+        'current_budgets': current_budgets,
 
         # Productivity
         'tasks_completed': tasks_completed_this_week,
         'pomodoro_sessions': pomodoro_stats['total_sessions'] or 0,
         'focus_hours': round((pomodoro_stats['total_minutes'] or 0) / 60, 1),
         'habits_completed': habit_stats['completed_count'] or 0,
+        'recent_tasks': recent_tasks,
+        'recent_txns': recent_txns,
 
         # Academic
         'current_gpa': current_gpa,
@@ -108,6 +115,7 @@ def get_weekly_dashboard(user):
         'hp': profile.hp,
         'level': profile.level,
         'xp_progress': profile.xp_progress_percent,
+        'xp_for_next': profile.xp_for_next_level,
         'longest_streak': profile.longest_streak,
 
         # Meta

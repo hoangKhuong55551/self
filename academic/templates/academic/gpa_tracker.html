@@ -3,15 +3,15 @@
 {% block title %}Bảng điểm GPA | Life OS{% endblock %}
 
 {% block content %}
-<div class="row">
+<div class="row g-4">
     <div class="col-lg-8">
-        <h3 class="fw-bold mb-3">Bảng điểm các Học kỳ</h3>
+        <h3 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Bảng điểm các Học kỳ</h3>
         {% for s in semesters %}
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="fw-bold mb-0">{{ s.name }} {% if s.is_current %}<span class="badge bg-success ms-1">Hiện tại</span>{% endif %}</h5>
-                    <small class="text-muted">Năm học: {{ s.year }} | {{ s.get_term_display }}</small>
+                    <h5 class="fw-bold mb-0 text-white">{{ s.name }} {% if s.is_current %}<span class="badge bg-success-subtle text-success ms-1">Hiện tại</span>{% endif %}</h5>
+                    <small class="text-muted">Năm học: {{ s.year }} &bull; {{ s.get_term_display }}</small>
                 </div>
                 <div class="text-end">
                     <span class="fs-5 fw-bold text-primary">GPA: {{ s.gpa }}</span>
@@ -19,11 +19,11 @@
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                    <thead>
                         <tr>
                             <th>Mã môn</th>
                             <th>Tên môn học</th>
-                            <th class="text-center">Số tín chỉ</th>
+                            <th class="text-center">Số TC</th>
                             <th class="text-center">Điểm (Hệ 4)</th>
                             <th class="text-center">Trạng thái</th>
                         </tr>
@@ -31,23 +31,23 @@
                     <tbody>
                         {% for c in s.courses.all %}
                         <tr>
-                            <td><code>{{ c.code|default:"--" }}</code></td>
-                            <td><strong>{{ c.name }}</strong></td>
+                            <td><code class="text-muted">{{ c.code|default:"--" }}</code></td>
+                            <td><strong class="text-white">{{ c.name }}</strong></td>
                             <td class="text-center">{{ c.credits }}</td>
-                            <td class="text-center fw-bold {% if c.grade and c.grade >= 3.5 %}text-success{% elif c.grade and c.grade < 2.0 %}text-danger{% endif %}">
+                            <td class="text-center fw-bold {% if c.grade and c.grade >= 3.5 %}text-success{% elif c.grade and c.grade < 2.0 %}text-danger{% else %}text-white{% endif %}">
                                 {{ c.get_grade_display|default:"Chưa có" }}
                             </td>
                             <td class="text-center">
                                 {% if c.is_completed %}
-                                <span class="badge bg-success">Đã hoàn thành</span>
+                                <span class="badge bg-success-subtle text-success">Đã hoàn thành</span>
                                 {% else %}
-                                <span class="badge bg-warning text-dark">Đang học</span>
+                                <span class="badge bg-warning-subtle text-warning">Đang học</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-3">Chưa có môn học nào trong học kỳ này.</td>
+                            <td colspan="5" class="text-center text-muted py-4 small">Chưa có môn học nào trong học kỳ này.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -55,15 +55,15 @@
             </div>
         </div>
         {% empty %}
-        <div class="text-center py-5 text-muted">Chưa có học kỳ nào được thiết lập.</div>
+        <div class="text-center py-5 text-muted small">Chưa có học kỳ nào được thiết lập.</div>
         {% endfor %}
     </div>
 
     <!-- Cột thêm học kỳ & môn học -->
     <div class="col-lg-4">
         <!-- Thêm học kỳ -->
-        <div class="card shadow-sm border-0 p-3 mb-4">
-            <h5 class="fw-bold mb-3">+ Thêm Học kỳ</h5>
+        <div class="card p-4 mb-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-calendar-plus me-2 text-primary"></i>Thêm Học kỳ</h5>
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="add_semester" value="1">
@@ -83,15 +83,15 @@
                 </div>
                 <div class="form-check mb-3">
                     {{ sem_form.is_current }}
-                    <label class="form-check-label">Đặt làm kỳ hiện tại</label>
+                    <label class="form-check-label text-muted small">Đặt làm kỳ hiện tại</label>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Lưu học kỳ</button>
+                <button type="submit" class="btn btn-primary w-100 py-2">Lưu học kỳ</button>
             </form>
         </div>
 
         <!-- Thêm môn học -->
-        <div class="card shadow-sm border-0 p-3">
-            <h5 class="fw-bold mb-3">+ Thêm Môn học</h5>
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-journal-plus me-2 text-success"></i>Thêm Môn học</h5>
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="add_course" value="1">
@@ -119,9 +119,9 @@
                 </div>
                 <div class="form-check mb-3">
                     {{ course_form.is_completed }}
-                    <label class="form-check-label">Đã hoàn thành</label>
+                    <label class="form-check-label text-muted small">Đã hoàn thành</label>
                 </div>
-                <button type="submit" class="btn btn-success w-100">Thêm môn học</button>
+                <button type="submit" class="btn btn-success w-100 py-2">Thêm môn học</button>
             </form>
         </div>
     </div>

@@ -1,58 +1,167 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Life OS - Personal Dashboard{% endblock %}</title>
+    <title>{% block title %}Life OS — All-in-One Personal Management System{% endblock %}</title>
+
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Custom Dark SaaS & RPG Design System -->
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="{% url 'core:dashboard' %}">🚀 Life OS</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{% url 'core:dashboard' %}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'finance:dashboard' %}"><i class="bi bi-wallet2"></i> Tài chính</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'productivity:dashboard' %}"><i class="bi bi-check2-square"></i> Hiệu suất</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'academic:dashboard' %}"><i class="bi bi-mortarboard"></i> Học tập</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-gear"></i> Admin</a></li>
-                </ul>
-                <div class="d-flex align-items-center text-white">
-                    {% if user.is_authenticated %}
-                        <span class="badge bg-warning text-dark me-2">Lv.{{ profile.level }}</span>
-                        <span class="badge bg-danger me-2">HP: {{ profile.hp }}/100</span>
-                        <span class="badge bg-primary me-3">XP: {{ profile.xp }}</span>
-                        <span class="me-3 fw-bold">{{ user.username }}</span>
-                        <form action="{% url 'logout' %}" method="post" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-light btn-sm">Đăng xuất</button>
-                        </form>
-                    {% else %}
-                        <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2">Đăng nhập</a>
-                        <a href="{% url 'core:register' %}" class="btn btn-primary btn-sm">Đăng ký</a>
-                    {% endif %}
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar" id="appSidebar">
+            <a href="{% url 'core:dashboard' %}" class="sidebar-brand">
+                <div class="brand-icon">
+                    <i class="bi bi-shield-shaded"></i>
                 </div>
+                <div class="brand-text">Life OS</div>
+            </a>
+
+            <ul class="sidebar-nav">
+                <li class="nav-category">Tổng quan</li>
+                <li>
+                    <a href="{% url 'core:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'core' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="nav-category">Hệ thống phân hệ</li>
+                <li>
+                    <a href="{% url 'finance:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'finance' %}active{% endif %}">
+                        <i class="bi bi-wallet2"></i>
+                        <span>Tài chính</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'productivity:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'productivity' %}active{% endif %}">
+                        <i class="bi bi-check2-square"></i>
+                        <span>Hiệu suất</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'academic:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'academic' %}active{% endif %}">
+                        <i class="bi bi-mortarboard-fill"></i>
+                        <span>Học tập</span>
+                    </a>
+                </li>
+
+                <li class="nav-category">Quản trị</li>
+                <li>
+                    <a href="/admin/" class="sidebar-link">
+                        <i class="bi bi-sliders"></i>
+                        <span>Admin</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                {% if user.is_authenticated %}
+                <div class="user-snippet">
+                    <div class="avatar-badge">
+                        {{ user.username|slice:":1"|upper }}
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-bold text-white text-truncate" style="font-size: 0.9rem;">
+                            {{ user.get_full_name|default:user.username }}
+                        </div>
+                        <div class="text-muted small">
+                            Lv.{{ profile.level|default:1 }} Adventurer
+                        </div>
+                    </div>
+                    <form action="{% url 'logout' %}" method="post" class="m-0 p-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link text-muted p-1" title="Đăng xuất">
+                            <i class="bi bi-box-arrow-right fs-5"></i>
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="d-grid gap-2">
+                    <a href="{% url 'login' %}" class="btn btn-outline-secondary btn-sm">Đăng nhập</a>
+                    <a href="{% url 'core:register' %}" class="btn btn-primary btn-sm">Đăng ký</a>
+                </div>
+                {% endif %}
             </div>
+        </aside>
+
+        <!-- Main Wrapper -->
+        <div class="app-main">
+            <!-- Topbar Header -->
+            <header class="app-topbar">
+                <div class="d-flex align-items-center gap-3">
+                    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Toggle menu">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="d-none d-md-flex align-items-center text-muted small">
+                        <i class="bi bi-calendar3 me-2"></i>
+                        <span id="currentDateDisplay">{% now "l, d F Y" %}</span>
+                    </div>
+                </div>
+
+                <!-- Gamification Badges on Topbar (XP & Streak) -->
+                {% if user.is_authenticated and profile %}
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rpg-badge badge-level">
+                        <i class="bi bi-award-fill"></i>
+                        <span>Cấp {{ profile.level }}</span>
+                    </div>
+                    <div class="rpg-badge badge-xp">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                        <span>{{ profile.xp }} XP</span>
+                    </div>
+                    <div class="rpg-badge badge-streak">
+                        <i class="bi bi-fire"></i>
+                        <span>{{ profile.longest_streak }}d Streak</span>
+                    </div>
+                </div>
+                {% endif %}
+            </header>
+
+            <!-- Alerts & Messages framework -->
+            {% if messages %}
+            <div class="px-4 pt-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Main Workspace Content -->
+            <main class="content-container">
+                {% block content %}{% endblock %}
+            </main>
+
+            <!-- Compact Footer -->
+            <footer class="py-3 px-4 text-center text-muted border-top border-dark-subtle" style="font-size: 0.85rem; border-color: var(--border-subtle) !important;">
+                Life OS &copy; 2026 — All-in-One Personal SaaS &amp; RPG Operating System
+            </footer>
         </div>
-    </nav>
+    </div>
 
-    <main class="container my-4">
-        {% block content %}{% endblock %}
-    </main>
+    <!-- Mobile Overlay Backdrop -->
+    <div id="sidebarOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1035;"></div>
 
-    <footer class="footer mt-auto py-3 bg-white border-top text-center text-muted">
-        <div class="container">
-            <small>Life OS &copy; 2026 - All-in-One Personal Management System</small>
-        </div>
-    </footer>
-
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/app.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

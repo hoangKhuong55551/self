@@ -5,14 +5,17 @@
 {% block content %}
 <div class="row justify-content-center my-5">
     <div class="col-md-5 col-lg-4">
-        <div class="card shadow border-0 p-4">
+        <div class="card p-4 p-md-5">
             <div class="text-center mb-4">
-                <h3 class="fw-bold">🚀 Life OS</h3>
-                <span class="text-muted">Đăng nhập vào hệ điều hành cuộc sống của bạn</span>
+                <div class="brand-icon mx-auto mb-3" style="width: 48px; height: 48px; font-size: 1.5rem;">
+                    <i class="bi bi-shield-shaded"></i>
+                </div>
+                <h3 class="fw-bold text-white mb-1" style="letter-spacing: -0.02em;">Life OS</h3>
+                <span class="text-muted small">Hệ điều hành quản trị cá nhân toàn diện</span>
             </div>
 
             {% if form.errors %}
-            <div class="alert alert-danger py-2 small">
+            <div class="alert alert-danger py-2 small mb-3">
                 Tên đăng nhập hoặc mật khẩu không chính xác.
             </div>
             {% endif %}
@@ -27,11 +30,11 @@
                     <label class="form-label">Mật khẩu</label>
                     <input type="password" name="password" class="form-control" required placeholder="••••••••">
                 </div>
-                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Đăng nhập</button>
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mt-2">Đăng nhập</button>
             </form>
 
-            <div class="text-center mt-4">
-                <small class="text-muted">Chưa có tài khoản? <a href="{% url 'core:register' %}">Đăng ký ngay</a></small>
+            <div class="text-center mt-4 pt-2 border-top border-dark-subtle">
+                <small class="text-muted">Chưa có tài khoản? <a href="{% url 'core:register' %}" class="text-primary text-decoration-none fw-semibold">Đăng ký ngay</a></small>
             </div>
         </div>
     </div>

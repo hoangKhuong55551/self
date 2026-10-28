@@ -3,29 +3,29 @@
 {% block title %}Bảng Kanban | Life OS{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
-        <h3 class="fw-bold mb-0">📋 Bảng Kanban Quản lý Công việc</h3>
-        <span class="text-muted">Kéo thả hoặc di chuyển trạng thái công việc và theo dõi độ ưu tiên</span>
+        <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">📋 Bảng Kanban Quản lý Công việc</h3>
+        <span class="text-muted">Kéo thả hoặc di chuyển trạng thái công việc và theo dõi độ ưu tiên ma trận Eisenhower</span>
     </div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
-        <i class="bi bi-plus-lg"></i> Thêm Task mới
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+        <i class="bi bi-plus-lg me-1"></i> Thêm Task mới
     </button>
 </div>
 
 <!-- Modal thêm Task -->
 <div class="modal fade" id="addTaskModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Tạo công việc mới</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content" style="background: var(--bg-surface); border: 1px solid var(--border-card);">
+            <div class="modal-header" style="border-bottom-color: var(--border-subtle);">
+                <h5 class="modal-title fw-bold text-white">Tạo công việc mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="post">
                 {% csrf_token %}
                 <div class="modal-body">
                     {% if not has_goals %}
-                    <div class="alert alert-warning">Bạn cần tạo ít nhất một Mục tiêu (Goal) trước khi thêm Task! <a href="{% url 'productivity:goal_list' %}">Tạo mục tiêu ngay</a></div>
+                    <div class="alert alert-warning small">Bạn cần tạo ít nhất một Mục tiêu (Goal) trước khi thêm Task! <a href="{% url 'productivity:goal_list' %}" class="fw-bold">Tạo mục tiêu ngay</a></div>
                     {% endif %}
                     <div class="mb-3">
                         <label class="form-label">Thuộc mục tiêu</label>
@@ -36,7 +36,7 @@
                         {{ form.title }}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Ma trận Eisenhower (Độ quan trọng)</label>
+                        <label class="form-label">Ma trận Eisenhower (Độ ưu tiên)</label>
                         {{ form.quadrant }}
                     </div>
                     <div class="row mb-3">
@@ -45,7 +45,7 @@
                             {{ form.status }}
                         </div>
                         <div class="col-6">
-                            <label class="form-label">Dự kiến Pomodoros</label>
+                            <label class="form-label">Dự kiến Pomodoro</label>
                             {{ form.estimated_pomodoros }}
                         </div>
                     </div>
@@ -58,9 +58,9 @@
                         {{ form.description }}
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button type="submit" class="btn btn-primary" {% if not has_goals %}disabled{% endif %}>Tạo Task</button>
+                <div class="modal-footer" style="border-top-color: var(--border-subtle);">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary btn-sm" {% if not has_goals %}disabled{% endif %}>Tạo Task</button>
                 </div>
             </form>
         </div>
@@ -71,26 +71,26 @@
 <div class="row g-3">
     <!-- Cột To Do -->
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-light">
-            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-secondary">⏳ CẦN LÀM (TO DO)</h6>
-                <span class="badge bg-secondary">{{ todo_tasks|length }}</span>
+        <div class="card h-100" style="background: rgba(17, 24, 39, 0.6);">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="text-uppercase small fw-bold text-muted"><i class="bi bi-hourglass me-1"></i> Cần làm (To Do)</span>
+                <span class="badge bg-secondary-subtle text-muted">{{ todo_tasks|length }}</span>
             </div>
-            <div class="card-body p-2" style="min-height: 500px;">
+            <div class="card-body p-2" style="min-height: 480px;">
                 {% for t in todo_tasks %}
-                <div class="card shadow-sm border-0 mb-2 p-3">
+                <div class="card mb-2 p-3" style="background: var(--bg-surface-elevated);">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <span class="badge bg-light text-dark border">{{ t.get_quadrant_display }}</span>
+                        <span class="badge bg-dark-subtle border border-dark-subtle text-muted small">{{ t.get_quadrant_display }}</span>
                         <small class="text-muted"><i class="bi bi-stopwatch"></i> {{ t.actual_pomodoros }}/{{ t.estimated_pomodoros }}</small>
                     </div>
-                    <h6 class="fw-bold mb-1">{{ t.title }}</h6>
+                    <h6 class="fw-bold text-white mb-1 mt-1">{{ t.title }}</h6>
                     <small class="text-muted mb-2 d-block">Mục tiêu: {{ t.goal.title }}</small>
                     <div class="d-flex justify-content-end gap-1 mt-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="setTaskStatus({{ t.pk }}, 'in_progress')">Bắt đầu ➔</button>
+                        <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="setTaskStatus({{ t.pk }}, 'in_progress')">Bắt đầu &rarr;</button>
                     </div>
                 </div>
                 {% empty %}
-                <p class="text-muted text-center py-4 small">Trống</p>
+                <p class="text-muted text-center py-5 small">Trống</p>
                 {% endfor %}
             </div>
         </div>
@@ -98,27 +98,27 @@
 
     <!-- Cột In Progress -->
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-light">
-            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-primary">⚙️ ĐANG LÀM (IN PROGRESS)</h6>
-                <span class="badge bg-primary">{{ in_progress_tasks|length }}</span>
+        <div class="card h-100" style="background: rgba(17, 24, 39, 0.6);">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="text-uppercase small fw-bold text-primary"><i class="bi bi-gear-wide-connected me-1"></i> Đang làm (In Progress)</span>
+                <span class="badge bg-primary-subtle text-primary">{{ in_progress_tasks|length }}</span>
             </div>
-            <div class="card-body p-2" style="min-height: 500px;">
+            <div class="card-body p-2" style="min-height: 480px;">
                 {% for t in in_progress_tasks %}
-                <div class="card shadow-sm border-0 mb-2 p-3 border-start border-primary border-4">
+                <div class="card mb-2 p-3" style="background: var(--bg-surface-elevated); border-left: 3px solid var(--accent-primary) !important;">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <span class="badge bg-light text-dark border">{{ t.get_quadrant_display }}</span>
+                        <span class="badge bg-dark-subtle border border-dark-subtle text-muted small">{{ t.get_quadrant_display }}</span>
                         <small class="text-muted"><i class="bi bi-stopwatch"></i> {{ t.actual_pomodoros }}/{{ t.estimated_pomodoros }}</small>
                     </div>
-                    <h6 class="fw-bold mb-1">{{ t.title }}</h6>
+                    <h6 class="fw-bold text-white mb-1 mt-1">{{ t.title }}</h6>
                     <small class="text-muted mb-2 d-block">Mục tiêu: {{ t.goal.title }}</small>
                     <div class="d-flex justify-content-between gap-1 mt-2">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="setTaskStatus({{ t.pk }}, 'todo')">⬅ Hoãn</button>
-                        <button class="btn btn-sm btn-success" onclick="setTaskStatus({{ t.pk }}, 'done')">Xong ✓</button>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="setTaskStatus({{ t.pk }}, 'todo')">&larr; Hoãn</button>
+                        <button class="btn btn-sm btn-success py-0 px-2" onclick="setTaskStatus({{ t.pk }}, 'done')">Xong ✓</button>
                     </div>
                 </div>
                 {% empty %}
-                <p class="text-muted text-center py-4 small">Trống</p>
+                <p class="text-muted text-center py-5 small">Trống</p>
                 {% endfor %}
             </div>
         </div>
@@ -126,26 +126,26 @@
 
     <!-- Cột Done -->
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-light">
-            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-success">✅ HOÀN THÀNH (DONE)</h6>
-                <span class="badge bg-success">{{ done_tasks|length }}</span>
+        <div class="card h-100" style="background: rgba(17, 24, 39, 0.6);">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="text-uppercase small fw-bold text-success"><i class="bi bi-check2-circle me-1"></i> Hoàn thành (Done)</span>
+                <span class="badge bg-success-subtle text-success">{{ done_tasks|length }}</span>
             </div>
-            <div class="card-body p-2" style="min-height: 500px;">
+            <div class="card-body p-2" style="min-height: 480px;">
                 {% for t in done_tasks %}
-                <div class="card shadow-sm border-0 mb-2 p-3 opacity-75">
+                <div class="card mb-2 p-3 opacity-75" style="background: var(--bg-surface-elevated);">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <span class="badge bg-success">Đã hoàn thành</span>
+                        <span class="badge bg-success-subtle text-success small">Đã xong</span>
                         <small class="text-muted">{{ t.completed_at|date:"d/m H:i" }}</small>
                     </div>
-                    <h6 class="text-decoration-line-through mb-1">{{ t.title }}</h6>
+                    <h6 class="text-decoration-line-through text-muted mb-1 mt-1">{{ t.title }}</h6>
                     <small class="text-muted d-block">Mục tiêu: {{ t.goal.title }}</small>
                     <div class="d-flex justify-content-end mt-2">
-                        <button class="btn btn-sm btn-link text-muted p-0" onclick="setTaskStatus({{ t.pk }}, 'todo')">Hoàn tác</button>
+                        <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none" onclick="setTaskStatus({{ t.pk }}, 'todo')">Hoàn tác</button>
                     </div>
                 </div>
                 {% empty %}
-                <p class="text-muted text-center py-4 small">Trống</p>
+                <p class="text-muted text-center py-5 small">Trống</p>
                 {% endfor %}
             </div>
         </div>

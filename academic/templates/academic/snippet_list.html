@@ -3,10 +3,10 @@
 {% block title %}Kho Code Snippets | Life OS{% endblock %}
 
 {% block content %}
-<div class="row">
+<div class="row g-4">
     <div class="col-lg-8">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="fw-bold mb-0">💻 Kho Code Snippets Cá Nhân</h3>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
+            <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">💻 Kho Code Snippets Cá Nhân</h3>
             <form method="get" class="d-flex" style="max-width: 320px;">
                 <input type="text" name="q" class="form-control form-control-sm me-2" placeholder="Tìm kiếm code..." value="{{ query }}">
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Tìm</button>
@@ -16,35 +16,35 @@
         <div class="row g-3">
             {% for cs in snippets %}
             <div class="col-12">
-                <div class="card shadow-sm border-0 p-3">
+                <div class="card p-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h5 class="fw-bold mb-0">
-                            <a href="{% url 'academic:snippet_detail' cs.pk %}" class="text-decoration-none text-dark">{{ cs.title }}</a>
+                            <a href="{% url 'academic:snippet_detail' cs.pk %}" class="text-decoration-none text-white">{{ cs.title }}</a>
                         </h5>
-                        <span class="badge bg-dark">{{ cs.language }}</span>
+                        <span class="badge bg-dark-subtle border border-dark-subtle text-muted font-monospace">{{ cs.language }}</span>
                     </div>
                     <p class="text-muted small mb-2">{{ cs.description|default:"Không có mô tả" }}</p>
-                    <pre class="bg-dark text-light p-3 rounded mb-2 overflow-auto" style="max-height: 180px;"><code class="language-{{ cs.language }}">{{ cs.code }}</code></pre>
-                    <div class="d-flex justify-content-between align-items-center small text-muted">
+                    <pre class="p-3 rounded mb-2 overflow-auto text-light font-monospace" style="background: var(--bg-base); border: 1px solid var(--border-subtle); max-height: 180px; font-size: 0.88rem;"><code class="language-{{ cs.language }}">{{ cs.code }}</code></pre>
+                    <div class="d-flex justify-content-between align-items-center small text-muted mt-2">
                         <div>
                             {% for tag in cs.tags.all %}
-                            <span class="badge bg-light text-dark border">{{ tag.name }}</span>
+                            <span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ tag.name }}</span>
                             {% endfor %}
                         </div>
-                        <a href="{% url 'academic:snippet_detail' cs.pk %}" class="btn btn-sm btn-outline-primary">Xem chi tiết</a>
+                        <a href="{% url 'academic:snippet_detail' cs.pk %}" class="btn btn-sm btn-outline-primary py-0 px-2">Xem chi tiết &rarr;</a>
                     </div>
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 text-center py-5 text-muted">Chưa có đoạn code nào. Hãy lưu trữ snippet đầu tiên!</div>
+            <div class="col-12 text-center py-5 text-muted small">Chưa có đoạn code nào. Hãy lưu trữ snippet đầu tiên!</div>
             {% endfor %}
         </div>
     </div>
 
     <!-- Form thêm snippet -->
     <div class="col-lg-4">
-        <div class="card shadow-sm border-0 p-3">
-            <h5 class="fw-bold mb-3">+ Lưu Code Snippet</h5>
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-code-slash me-2 text-primary"></i>Lưu Code Snippet</h5>
             <form method="post">
                 {% csrf_token %}
                 <div class="mb-3">
@@ -67,7 +67,7 @@
                     <label class="form-label">Gắn thẻ (Tags)</label>
                     {{ form.tags }}
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Lưu đoạn code</button>
+                <button type="submit" class="btn btn-primary w-100 py-2">Lưu đoạn code</button>
             </form>
         </div>
     </div>

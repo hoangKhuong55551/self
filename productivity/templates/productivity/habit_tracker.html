@@ -3,20 +3,20 @@
 {% block title %}Theo dõi Thói quen & Heatmap | Life OS{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <h3 class="fw-bold mb-3">🔥 Thói quen & Biểu đồ đóng góp (Heatmap)</h3>
-        <p class="text-muted">Theo dõi lịch sử 30 ngày gần nhất và duy trì chuỗi Streak để tích lũy điểm kinh nghiệm (XP).</p>
+<div class="row g-4">
+    <div class="col-lg-8">
+        <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">🔥 Thói quen &amp; Biểu đồ Đóng góp (Heatmap)</h3>
+        <p class="text-muted mb-4 small">Lịch sử 30 ngày gần nhất &bull; Duy trì chuỗi Streak để tích lũy điểm kinh nghiệm (XP)</p>
 
-        <div class="card shadow-sm border-0 p-3 mb-4">
-            <h5 class="fw-bold mb-3">Lịch sử 30 ngày</h5>
+        <div class="card p-4 mb-4">
+            <h5 class="fw-bold text-white mb-3"><i class="bi bi-calendar-week me-2 text-warning"></i>Ma trận Kỷ luật (30 ngày)</h5>
             <div class="table-responsive">
-                <table class="table table-bordered text-center align-middle mb-0" style="font-size: 0.85rem;">
-                    <thead class="table-light">
+                <table class="table text-center align-middle mb-0" style="font-size: 0.85rem;">
+                    <thead>
                         <tr>
                             <th class="text-start" style="min-width: 150px;">Thói quen</th>
                             {% for d in days_range %}
-                            <th style="padding: 4px; min-width: 25px;" title="{{ d|date:'d/m/Y' }}">
+                            <th style="padding: 4px; min-width: 22px;" title="{{ d|date:'d/m/Y' }}">
                                 {{ d|date:"d" }}
                             </th>
                             {% endfor %}
@@ -26,23 +26,23 @@
                     <tbody>
                         {% for row in habit_matrix %}
                         <tr>
-                            <td class="text-start fw-bold">
+                            <td class="text-start fw-semibold text-white">
                                 {{ row.habit.icon }} {{ row.habit.name }}
                             </td>
                             {% for completed in row.history %}
                             <td style="padding: 4px;">
                                 {% if completed %}
-                                <div style="width: 18px; height: 18px; background-color: #22c55e; border-radius: 3px; margin: auto;" title="Đã xong"></div>
+                                <div style="width: 16px; height: 16px; background-color: var(--accent-emerald); border-radius: 3px; margin: auto; box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);" title="Đã xong"></div>
                                 {% else %}
-                                <div style="width: 18px; height: 18px; background-color: #e5e7eb; border-radius: 3px; margin: auto;" title="Chưa làm"></div>
+                                <div style="width: 16px; height: 16px; background-color: rgba(255, 255, 255, 0.06); border-radius: 3px; margin: auto;" title="Chưa làm"></div>
                                 {% endif %}
                             </td>
                             {% endfor %}
-                            <td class="fw-bold text-danger">{{ row.streak }}🔥</td>
+                            <td class="fw-bold text-warning">{{ row.streak }}🔥</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="32" class="text-muted py-4">Chưa có thói quen nào.</td>
+                            <td colspan="32" class="text-muted py-5 small">Chưa có thói quen nào.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -50,9 +50,9 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 p-3">
-            <h5 class="fw-bold mb-3">Tạo thói quen mới</h5>
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-plus-circle me-2 text-primary"></i>Tạo thói quen mới</h5>
             <form method="post">
                 {% csrf_token %}
                 <div class="mb-3">
@@ -68,18 +68,18 @@
                     {{ form.target_per_day }}
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Emoji / Biểu tượng</label>
+                    <label class="form-label">Biểu tượng Emoji</label>
                     {{ form.icon }}
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Màu sắc</label>
+                    <label class="form-label">Màu nhận diện</label>
                     {{ form.color }}
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Ghi chú</label>
                     {{ form.description }}
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Bắt đầu thói quen</button>
+                <button type="submit" class="btn btn-primary w-100 py-2">Khởi tạo thói quen</button>
             </form>
         </div>
     </div>

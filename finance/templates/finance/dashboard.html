@@ -3,39 +3,60 @@
 {% block title %}Tài chính & Chi tiêu | Life OS{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
-        <h2 class="fw-bold mb-0">💰 Quản lý Tài chính</h2>
-        <span class="text-muted">Theo dõi dòng tiền, hạn mức ngân sách và các mục tiêu mua sắm</span>
+        <h2 class="fw-bold mb-1" style="letter-spacing: -0.02em;">💰 Quản lý Tài chính</h2>
+        <p class="text-muted mb-0">Dòng tiền, ví thanh toán, gói dịch vụ định kỳ và kế hoạch chi tiêu</p>
     </div>
-    <div class="btn-group">
-        <a href="{% url 'finance:transaction_list' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Giao dịch mới</a>
-        <a href="{% url 'finance:wallet_list' %}" class="btn btn-outline-secondary"><i class="bi bi-wallet2"></i> Ví của tôi</a>
-        <a href="{% url 'finance:budget_list' %}" class="btn btn-outline-secondary"><i class="bi bi-pie-chart"></i> Ngân sách</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'finance:transaction_list' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i> Giao dịch mới
+        </a>
+        <a href="{% url 'finance:wallet_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-wallet2 me-1"></i> Ví của tôi
+        </a>
+        <a href="{% url 'finance:budget_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pie-chart me-1"></i> Ngân sách
+        </a>
     </div>
 </div>
 
 <!-- Overview Row -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-primary text-white p-3">
-            <span class="text-uppercase small">Tổng tài sản các ví</span>
-            <h2 class="fw-bold mt-1 mb-0">{{ total_balance|floatformat:0 }} đ</h2>
-            <small class="text-white-50 mt-2">{{ wallets|length }} ví đang hoạt động</small>
+        <div class="kpi-card" style="--card-accent: var(--accent-primary);">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-bold">Tổng tài sản các ví</span>
+                <div class="kpi-icon-wrap">
+                    <i class="bi bi-wallet2"></i>
+                </div>
+            </div>
+            <div class="kpi-value">{{ total_balance|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="small text-muted">{{ wallets|length }} ví đang hoạt động</div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-success text-white p-3">
-            <span class="text-uppercase small">Tổng thu (Tháng {{ current_month }})</span>
-            <h2 class="fw-bold mt-1 mb-0">+{{ month_income|floatformat:0 }} đ</h2>
-            <small class="text-white-50 mt-2">Dòng tiền vào</small>
+        <div class="kpi-card" style="--card-accent: var(--accent-emerald);">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-bold">Tổng thu (Tháng {{ current_month }})</span>
+                <div class="kpi-icon-wrap" style="color: var(--accent-emerald);">
+                    <i class="bi bi-arrow-down-left"></i>
+                </div>
+            </div>
+            <div class="kpi-value text-success">+{{ month_income|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="small text-muted">Dòng tiền thu nhập</div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-danger text-white p-3">
-            <span class="text-uppercase small">Tổng chi (Tháng {{ current_month }})</span>
-            <h2 class="fw-bold mt-1 mb-0">-{{ month_expense|floatformat:0 }} đ</h2>
-            <small class="text-white-50 mt-2">Dòng tiền ra</small>
+        <div class="kpi-card" style="--card-accent: var(--accent-rose);">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-bold">Tổng chi (Tháng {{ current_month }})</span>
+                <div class="kpi-icon-wrap" style="color: var(--accent-rose);">
+                    <i class="bi bi-arrow-up-right"></i>
+                </div>
+            </div>
+            <div class="kpi-value text-danger">-{{ month_expense|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="small text-muted">Dòng tiền chi tiêu</div>
         </div>
     </div>
 </div>
@@ -44,14 +65,14 @@
     <!-- Transactions and Budgets -->
     <div class="col-lg-8">
         <!-- Recent Transactions -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">Giao dịch gần đây</h5>
-                <a href="{% url 'finance:transaction_list' %}" class="btn btn-sm btn-outline-primary">Xem tất cả</a>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock-history me-2 text-primary"></i>Giao dịch gần đây</span>
+                <a href="{% url 'finance:transaction_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Xem tất cả &rarr;</a>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                    <thead>
                         <tr>
                             <th>Ngày</th>
                             <th>Ví</th>
@@ -63,13 +84,13 @@
                     <tbody>
                         {% for t in recent_transactions %}
                         <tr>
-                            <td>{{ t.date|date:"d/m/Y" }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ t.wallet.name }}</span></td>
+                            <td class="text-muted small">{{ t.date|date:"d/m/Y" }}</td>
+                            <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ t.wallet.name }}</span></td>
                             <td>{{ t.category.name|default:"--" }}</td>
                             <td>
                                 {{ t.note }}
-                                {% if t.source == 'subscription' %}<span class="badge bg-warning text-dark ms-1">Gói định kỳ</span>{% endif %}
-                                {% if t.source == 'wishlist' %}<span class="badge bg-info text-dark ms-1">Wishlist</span>{% endif %}
+                                {% if t.source == 'subscription' %}<span class="badge bg-warning-subtle text-warning ms-1">Định kỳ</span>{% endif %}
+                                {% if t.source == 'wishlist' %}<span class="badge bg-info-subtle text-info ms-1">Wishlist</span>{% endif %}
                             </td>
                             <td class="text-end fw-bold {% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
                                 {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|floatformat:0 }} đ
@@ -77,7 +98,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-4 text-muted">Chưa có giao dịch nào được ghi nhận.</td>
+                            <td colspan="5" class="text-center py-4 text-muted small">Chưa có giao dịch nào được ghi nhận.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -86,33 +107,33 @@
         </div>
 
         <!-- Monthly Budgets -->
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">Hạn mức ngân sách tháng {{ current_month }}</h5>
-                <a href="{% url 'finance:budget_list' %}" class="btn btn-sm btn-outline-primary">Thiết lập</a>
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-pie-chart me-2 text-secondary"></i>Hạn mức ngân sách tháng {{ current_month }}</span>
+                <a href="{% url 'finance:budget_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Thiết lập &rarr;</a>
             </div>
             <div class="card-body">
                 {% for b in budgets %}
                 <div class="mb-3">
                     <div class="d-flex justify-content-between mb-1">
-                        <span class="fw-bold">{{ b.category.name }}</span>
-                        <span>
+                        <span class="fw-semibold text-white">{{ b.category.name }}</span>
+                        <span class="small">
                             <strong>{{ b.spent|floatformat:0 }} đ</strong> / {{ b.amount|floatformat:0 }} đ
-                            <span class="badge {% if b.is_over_budget %}bg-danger{% else %}bg-secondary{% endif %}">
+                            <span class="badge {% if b.is_over_budget %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-muted{% endif %} ms-1">
                                 {{ b.percent_used }}%
                             </span>
                         </span>
                     </div>
-                    <div class="progress" style="height: 10px;">
+                    <div class="progress" style="height: 8px;">
                         <div class="progress-bar {% if b.is_over_budget %}bg-danger{% elif b.percent_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
                              role="progressbar" style="width: {{ b.percent_used }}%;"></div>
                     </div>
                     {% if b.is_over_budget %}
-                    <small class="text-danger fw-bold"><i class="bi bi-exclamation-circle"></i> Vượt hạn mức! Bạn đang bị trừ HP.</small>
+                    <small class="text-danger fw-semibold d-block mt-1"><i class="bi bi-exclamation-circle me-1"></i> Vượt hạn mức chi tiêu!</small>
                     {% endif %}
                 </div>
                 {% empty %}
-                <p class="text-muted text-center my-3">Chưa có ngân sách nào được thiết lập cho tháng này.</p>
+                <p class="text-muted text-center my-3 small">Chưa có ngân sách nào được thiết lập cho tháng này.</p>
                 {% endfor %}
             </div>
         </div>
@@ -121,49 +142,49 @@
     <!-- Subscriptions & Wishlist Side -->
     <div class="col-lg-4">
         <!-- Subscriptions -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">Gói định kỳ sắp tới</h5>
-                <a href="{% url 'finance:subscription_list' %}" class="btn btn-sm btn-outline-primary">Quản lý</a>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-repeat me-2 text-warning"></i>Gói định kỳ sắp tới</span>
+                <a href="{% url 'finance:subscription_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Quản lý &rarr;</a>
             </div>
             <ul class="list-group list-group-flush">
                 {% for s in subscriptions %}
                 <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <div>
-                        <h6 class="mb-0 fw-bold">{{ s.name }}</h6>
-                        <small class="text-muted">Hạn: {{ s.next_billing_date|date:"d/m/Y" }} ({{ s.get_billing_cycle_display }})</small>
+                        <h6 class="mb-0 fw-semibold text-white">{{ s.name }}</h6>
+                        <small class="text-muted">Hạn: {{ s.next_billing_date|date:"d/m" }} &bull; {{ s.get_billing_cycle_display }}</small>
                     </div>
                     <span class="fw-bold text-danger">-{{ s.amount|floatformat:0 }} đ</span>
                 </li>
                 {% empty %}
-                <li class="list-group-item text-center text-muted py-3">Không có dịch vụ định kỳ nào.</li>
+                <li class="list-group-item text-center text-muted py-3 small">Không có dịch vụ định kỳ nào.</li>
                 {% endfor %}
             </ul>
         </div>
 
         <!-- Wishlist -->
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">Mục tiêu mua sắm</h5>
-                <a href="{% url 'finance:wishlist' %}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bag-heart me-2 text-danger"></i>Mục tiêu mua sắm</span>
+                <a href="{% url 'finance:wishlist' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Chi tiết &rarr;</a>
             </div>
             <ul class="list-group list-group-flush">
                 {% for w in wishlist %}
                 <li class="list-group-item py-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="fw-bold">{{ w.name }}</span>
+                        <span class="fw-semibold text-white">{{ w.name }}</span>
                         <span class="text-primary fw-bold">{{ w.price|floatformat:0 }} đ</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">Khả năng chi trả: <strong>{{ w.affordability }}%</strong></small>
-                        <a href="{% url 'finance:wishlist_purchase' w.pk %}" class="btn btn-sm btn-success py-0" onclick="return confirm('Xác nhận mua món đồ này? Số dư ví sẽ bị trừ và chuyển vào mục Tài sản.')">Đã mua</a>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <small class="text-muted">Khả năng chi trả: <strong class="text-white">{{ w.affordability }}%</strong></small>
+                        <a href="{% url 'finance:wishlist_purchase' w.pk %}" class="btn btn-sm btn-outline-success py-0 px-2" onclick="return confirm('Xác nhận mua món đồ này? Số dư ví sẽ bị trừ và chuyển vào mục Tài sản.')">Đã mua</a>
                     </div>
                     <div class="progress mt-2" style="height: 6px;">
                         <div class="progress-bar bg-info" style="width: {{ w.affordability }}%;"></div>
                     </div>
                 </li>
                 {% empty %}
-                <li class="list-group-item text-center text-muted py-3">Wishlist trống.</li>
+                <li class="list-group-item text-center text-muted py-3 small">Wishlist trống.</li>
                 {% endfor %}
             </ul>
         </div>

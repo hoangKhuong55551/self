@@ -3,42 +3,63 @@
 {% block title %}Học tập & Second Brain | Life OS{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
-        <h2 class="fw-bold mb-0">📚 Học tập & "Bộ não thứ hai"</h2>
-        <span class="text-muted">Quản lý GPA, mô phỏng điểm số, ghi chú Markdown và kho lưu trữ Code Snippets</span>
+        <h2 class="fw-bold mb-1" style="letter-spacing: -0.02em;">📚 Học tập &amp; "Bộ não thứ hai"</h2>
+        <p class="text-muted mb-0">Quản lý GPA, mô phỏng điểm số, ghi chú Markdown và kho lưu trữ Code Snippets</p>
     </div>
-    <div class="btn-group">
-        <a href="{% url 'academic:gpa_tracker' %}" class="btn btn-primary"><i class="bi bi-mortarboard"></i> Bảng điểm GPA</a>
-        <a href="{% url 'academic:gpa_simulator' %}" class="btn btn-outline-secondary"><i class="bi bi-calculator"></i> Mô phỏng GPA</a>
-        <a href="{% url 'academic:note_list' %}" class="btn btn-outline-secondary"><i class="bi bi-journal-text"></i> Ghi chú Markdown</a>
-        <a href="{% url 'academic:snippet_list' %}" class="btn btn-outline-dark"><i class="bi bi-code-slash"></i> Kho Code Snippets</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'academic:gpa_tracker' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-mortarboard me-1"></i> Bảng điểm GPA
+        </a>
+        <a href="{% url 'academic:gpa_simulator' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-calculator me-1"></i> Mô phỏng GPA
+        </a>
+        <a href="{% url 'academic:note_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-journal-text me-1"></i> Ghi chú Markdown
+        </a>
+        <a href="{% url 'academic:snippet_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-code-slash me-1"></i> Kho Code Snippets
+        </a>
     </div>
 </div>
 
 <!-- GPA Quick Overview Row -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-primary text-white p-3">
-            <span class="text-uppercase small">Điểm tích lũy toàn khóa (cGPA)</span>
-            <h1 class="fw-bold mt-1 mb-0">{{ cgpa }} <small class="fs-6 opacity-75">/ 4.0</small></h1>
-            <small class="text-white-50 mt-2">Tổng số tín chỉ đã học: {{ total_credits }} TC</small>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-info text-dark p-3">
-            <span class="text-uppercase small">Học kỳ hiện tại</span>
-            <h3 class="fw-bold mt-1 mb-0">{{ current_sem.name|default:"Chưa kích hoạt" }}</h3>
-            <small class="text-dark-50 mt-2">GPA kỳ: {{ current_sem.gpa|default:"0.0" }}</small>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-dark text-white p-3 d-flex justify-content-between">
-            <div>
-                <span class="text-uppercase small text-white-50">Bộ não thứ hai (Second Brain)</span>
-                <h5 class="fw-bold mt-1 mb-0">{{ recent_notes|length }} Ghi chú &bull; {{ recent_snippets|length }} Code Snippets</h5>
+        <div class="kpi-card" style="--card-accent: var(--accent-primary);">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-bold">Điểm tích lũy (cGPA)</span>
+                <div class="kpi-icon-wrap">
+                    <i class="bi bi-mortarboard"></i>
+                </div>
             </div>
-            <a href="{% url 'academic:note_list' %}" class="btn btn-sm btn-outline-light align-self-start mt-2">Mở kho tri thức</a>
+            <div class="kpi-value">{{ cgpa }} <small class="fs-6 text-muted font-monospace">/ 4.0</small></div>
+            <div class="small text-muted">Tổng số tín chỉ đã học: {{ total_credits }} TC</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kpi-card" style="--card-accent: var(--accent-secondary);">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-bold">Học kỳ hiện tại</span>
+                <div class="kpi-icon-wrap" style="color: var(--accent-secondary);">
+                    <i class="bi bi-bookmark-star"></i>
+                </div>
+            </div>
+            <div class="kpi-value text-white">{{ current_sem.gpa|default:"0.0" }} <small class="fs-6 text-muted font-monospace">GPA</small></div>
+            <div class="small text-muted">{{ current_sem.name|default:"Chưa kích hoạt" }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kpi-card" style="--card-accent: var(--accent-purple);">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-bold">Second Brain Vault</span>
+                <div class="kpi-icon-wrap" style="color: var(--accent-purple);">
+                    <i class="bi bi-archive"></i>
+                </div>
+            </div>
+            <div class="kpi-value text-white">{{ recent_notes|length }} <small class="fs-6 text-muted font-monospace">Notes</small> &bull; {{ recent_snippets|length }} <small class="fs-6 text-muted font-monospace">Code</small></div>
+            <div class="small text-muted">Kho tri thức &amp; đoạn mã tái sử dụng</div>
         </div>
     </div>
 </div>
@@ -46,22 +67,24 @@
 <div class="row g-4">
     <!-- Cột trái: Bảng điểm các học kỳ -->
     <div class="col-lg-6">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">Học kỳ & Môn học gần đây</h5>
-                <a href="{% url 'academic:gpa_tracker' %}" class="btn btn-sm btn-outline-primary">Xem chi tiết</a>
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-check me-2 text-primary"></i>Học kỳ &amp; Môn học gần đây</span>
+                <a href="{% url 'academic:gpa_tracker' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Chi tiết &rarr;</a>
             </div>
             <div class="card-body">
                 {% for s in semesters %}
-                <div class="mb-3 p-3 bg-light rounded">
+                <div class="mb-3 p-3 rounded" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle);">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="fw-bold mb-0">{{ s.name }} {% if s.is_current %}<span class="badge bg-success ms-1">Hiện tại</span>{% endif %}</h6>
-                        <span class="badge bg-primary fs-6">GPA: {{ s.gpa }}</span>
+                        <h6 class="fw-bold mb-0 text-white">
+                            {{ s.name }} {% if s.is_current %}<span class="badge bg-success-subtle text-success ms-1">Hiện tại</span>{% endif %}
+                        </h6>
+                        <span class="badge bg-primary-subtle text-primary fs-6">GPA: {{ s.gpa }}</span>
                     </div>
-                    <small class="text-muted d-block mt-1">{{ s.courses.all|length }} môn học</small>
+                    <small class="text-muted d-block mt-1">{{ s.courses.all|length }} môn học &bull; Năm học: {{ s.year }}</small>
                 </div>
                 {% empty %}
-                <p class="text-muted text-center py-4">Chưa có dữ liệu học kỳ nào.</p>
+                <p class="text-muted text-center py-4 small">Chưa có dữ liệu học kỳ nào.</p>
                 {% endfor %}
             </div>
         </div>
@@ -70,47 +93,47 @@
     <!-- Cột phải: Kho kiến thức Markdown & Code Snippets -->
     <div class="col-lg-6">
         <!-- Ghi chú mới nhất -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">📌 Ghi chú gần đây</h5>
-                <a href="{% url 'academic:note_list' %}" class="btn btn-sm btn-outline-primary">+ Thêm ghi chú</a>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-pin-angle me-2 text-warning"></i>Ghi chú gần đây</span>
+                <a href="{% url 'academic:note_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">+ Thêm ghi chú &rarr;</a>
             </div>
             <ul class="list-group list-group-flush">
                 {% for n in recent_notes %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
+                <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <div>
-                        <a href="{% url 'academic:note_detail' n.pk %}" class="fw-bold text-decoration-none text-dark">{{ n.title }}</a>
-                        <small class="text-muted d-block">{{ n.updated_at|date:"d/m/Y H:i" }}</small>
+                        <a href="{% url 'academic:note_detail' n.pk %}" class="fw-semibold text-white text-decoration-none">{{ n.title }}</a>
+                        <small class="text-muted d-block mt-1">{{ n.updated_at|date:"d/m/Y H:i" }}</small>
                     </div>
                     <div>
                         {% for tag in n.tags.all %}
-                        <span class="badge bg-light text-dark border">{{ tag.name }}</span>
+                        <span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ tag.name }}</span>
                         {% endfor %}
                     </div>
                 </li>
                 {% empty %}
-                <li class="list-group-item text-center text-muted py-3">Chưa có ghi chú nào.</li>
+                <li class="list-group-item text-center text-muted py-4 small">Chưa có ghi chú nào.</li>
                 {% endfor %}
             </ul>
         </div>
 
         <!-- Code Snippets -->
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">💻 Đoạn mã (Code Snippets)</h5>
-                <a href="{% url 'academic:snippet_list' %}" class="btn btn-sm btn-outline-primary">+ Thêm code</a>
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-code-square me-2 text-info"></i>Đoạn mã (Code Snippets)</span>
+                <a href="{% url 'academic:snippet_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">+ Thêm code &rarr;</a>
             </div>
             <ul class="list-group list-group-flush">
                 {% for cs in recent_snippets %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
+                <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <div>
-                        <a href="{% url 'academic:snippet_detail' cs.pk %}" class="fw-bold text-decoration-none text-dark">{{ cs.title }}</a>
-                        <small class="text-muted d-block">Ngôn ngữ: {{ cs.get_language_display }}</small>
+                        <a href="{% url 'academic:snippet_detail' cs.pk %}" class="fw-semibold text-white text-decoration-none">{{ cs.title }}</a>
+                        <small class="text-muted d-block mt-1">Ngôn ngữ: {{ cs.get_language_display }}</small>
                     </div>
-                    <span class="badge bg-dark">{{ cs.language }}</span>
+                    <span class="badge bg-dark-subtle border border-dark-subtle text-muted font-monospace">{{ cs.language }}</span>
                 </li>
                 {% empty %}
-                <li class="list-group-item text-center text-muted py-3">Chưa có đoạn code nào được lưu.</li>
+                <li class="list-group-item text-center text-muted py-4 small">Chưa có đoạn code nào được lưu.</li>
                 {% endfor %}
             </ul>
         </div>

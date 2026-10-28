@@ -1,122 +1,366 @@
 {% extends 'base.html' %}
 
-{% block title %}Dashboard | Life OS{% endblock %}
+{% block title %}Dashboard Tổng quan | Life OS{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h2 class="fw-bold">Tổng quan tuần ({{ week_start|date:"d/m" }} - {{ week_end|date:"d/m/Y" }})</h2>
-        <p class="text-muted">Theo dõi toàn diện tài chính, công việc, thói quen và học tập.</p>
+<!-- 1. Header: Greeting & Period Description -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1" style="letter-spacing: -0.02em;">
+            Xin chào, {{ user.first_name|default:user.username }} 👋
+        </h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem;">
+            Báo cáo tổng hợp tuần <strong>{{ week_start|date:"d/m" }} &mdash; {{ week_end|date:"d/m/Y" }}</strong> &bull; Dữ liệu liên thông đa phân hệ
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'finance:transaction_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i> Giao dịch mới
+        </a>
+        <a href="{% url 'productivity:kanban_board' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-kanban me-1"></i> Bảng Kanban
+        </a>
     </div>
 </div>
 
-<!-- Stats Card Row -->
+<!-- 2. Bốn thẻ KPI chính -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 bg-primary text-white p-3">
+    <!-- Thẻ 1: Tổng số dư ví -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="kpi-card" style="--card-accent: var(--accent-primary);">
             <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="text-uppercase mb-1">Tổng số dư ví</h6>
-                    <h3 class="fw-bold mb-0">{{ total_balance|floatformat:0 }} đ</h3>
+                <span class="text-muted text-uppercase small fw-bold">Tổng số dư ví</span>
+                <div class="kpi-icon-wrap">
+                    <i class="bi bi-wallet2"></i>
                 </div>
-                <i class="bi bi-wallet2 fs-1 opacity-50"></i>
             </div>
-            <small class="mt-2 text-white-50">Tiết kiệm tuần: {{ savings_this_week|floatformat:0 }} đ</small>
+            <div class="kpi-value">{{ total_balance|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="d-flex align-items-center small text-muted">
+                <i class="bi bi-arrow-up-right me-1 text-success"></i>
+                <span>Tiết kiệm tuần: <strong class="text-white">{{ savings_this_week|floatformat:0 }} đ</strong></span>
+            </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 bg-success text-white p-3">
+
+    <!-- Thẻ 2: Tasks hoàn thành -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="kpi-card" style="--card-accent: var(--accent-emerald);">
             <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="text-uppercase mb-1">Tasks hoàn thành</h6>
-                    <h3 class="fw-bold mb-0">{{ tasks_completed }}</h3>
+                <span class="text-muted text-uppercase small fw-bold">Nhiệm vụ hoàn thành</span>
+                <div class="kpi-icon-wrap" style="color: var(--accent-emerald);">
+                    <i class="bi bi-check2-circle"></i>
                 </div>
-                <i class="bi bi-check2-circle fs-1 opacity-50"></i>
             </div>
-            <small class="mt-2 text-white-50">{{ habits_completed }} lượt thói quen xong</small>
+            <div class="kpi-value text-emerald">{{ tasks_completed }} <small class="fs-6 text-muted font-monospace">tasks</small></div>
+            <div class="d-flex align-items-center small text-muted">
+                <i class="bi bi-fire me-1 text-warning"></i>
+                <span>{{ habits_completed }} lượt thói quen xong tuần này</span>
+            </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 bg-warning text-dark p-3">
+
+    <!-- Thẻ 3: Giờ tập trung -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="kpi-card" style="--card-accent: var(--accent-amber);">
             <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="text-uppercase mb-1">Giờ tập trung</h6>
-                    <h3 class="fw-bold mb-0">{{ focus_hours }}h</h3>
+                <span class="text-muted text-uppercase small fw-bold">Thời gian tập trung</span>
+                <div class="kpi-icon-wrap" style="color: var(--accent-amber);">
+                    <i class="bi bi-stopwatch"></i>
                 </div>
-                <i class="bi bi-clock-history fs-1 opacity-50"></i>
             </div>
-            <small class="mt-2 text-muted">{{ pomodoro_sessions }} phiên Pomodoro</small>
+            <div class="kpi-value">{{ focus_hours }} <small class="fs-6 text-muted font-monospace">giờ</small></div>
+            <div class="d-flex align-items-center small text-muted">
+                <i class="bi bi-clock-history me-1 text-info"></i>
+                <span>{{ pomodoro_sessions }} phiên Pomodoro đã xong</span>
+            </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 bg-info text-dark p-3">
+
+    <!-- Thẻ 4: Điểm GPA -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="kpi-card" style="--card-accent: var(--accent-secondary);">
             <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="text-uppercase mb-1">GPA hiện tại</h6>
-                    <h3 class="fw-bold mb-0">{{ current_gpa }}</h3>
+                <span class="text-muted text-uppercase small fw-bold">Điểm GPA hiện tại</span>
+                <div class="kpi-icon-wrap" style="color: var(--accent-secondary);">
+                    <i class="bi bi-mortarboard"></i>
                 </div>
-                <i class="bi bi-mortarboard fs-1 opacity-50"></i>
             </div>
-            <small class="mt-2 text-dark-50">Học kỳ hiện tại</small>
+            <div class="kpi-value text-cyan">{{ current_gpa }} <small class="fs-6 text-muted font-monospace">/ 4.0</small></div>
+            <div class="d-flex align-items-center small text-muted">
+                <i class="bi bi-bookmark-check me-1 text-primary"></i>
+                <span>Học kỳ chính thức hiện tại</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Gamification Bar -->
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="fw-bold">Cấp độ {{ level }} (Streak: {{ longest_streak }} ngày 🔥)</span>
-            <span>{{ xp_progress }}% tới Lv.{{ level|add:1 }}</span>
-        </div>
-        <div class="progress" style="height: 12px;">
-            <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ xp_progress }}%;"></div>
+<!-- 3. Khu vực Tiến độ Level & RPG Gamification Bar -->
+<div class="card mb-4 border-0" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(17, 24, 39, 0.9));">
+    <div class="card-body p-4">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-7">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="rpg-badge badge-level fs-6">
+                            <i class="bi bi-award-fill"></i> Cấp độ {{ level }}
+                        </span>
+                        <span class="text-white fw-bold">Tiến trình Thăng cấp</span>
+                    </div>
+                    <span class="text-muted small">
+                        <strong>{{ xp }}</strong> / {{ xp_for_next }} XP (<strong class="text-white">{{ xp_progress }}%</strong>)
+                    </span>
+                </div>
+                <div class="progress" style="height: 12px;">
+                    <div class="progress-bar progress-bar-xp" role="progressbar" style="width: {{ xp_progress }}%;" aria-valuenow="{{ xp_progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+            <div class="col-lg-5 border-start-lg border-dark-subtle ps-lg-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Chuỗi kỷ luật (Streak)</div>
+                        <div class="fs-4 fw-bold text-white mt-1">
+                            🔥 {{ longest_streak }} <span class="fs-6 fw-normal text-muted">ngày liên tiếp</span>
+                        </div>
+                    </div>
+                    <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-outline-secondary btn-sm">
+                        Xem Heatmap
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Detailed Row -->
+<!-- 4. Lưới Biểu đồ & Trạng thái phân hệ -->
+<div class="row g-4 mb-4">
+    <!-- Cột trái: Biểu đồ Thu Chi & Ngân sách -->
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-graph-up me-2 text-primary"></i>Phân tích Dòng tiền Tuần</span>
+                <span class="badge bg-dark-subtle text-muted">{{ transaction_count }} giao dịch</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <span class="text-muted small d-block">Tổng thu tuần</span>
+                            <span class="fs-5 fw-bold text-success">+{{ total_income|floatformat:0 }} đ</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 rounded" style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.2);">
+                            <span class="text-muted small d-block">Tổng chi tuần</span>
+                            <span class="fs-5 fw-bold text-danger">-{{ total_expense|floatformat:0 }} đ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height: 220px; position: relative;">
+                    <canvas id="weeklyFinanceChart"></canvas>
+                </div>
+
+                <!-- Cảnh báo ngân sách -->
+                <div class="mt-3">
+                    {% if overbudget_categories %}
+                        <div class="alert alert-danger py-2 px-3 small d-flex align-items-center mb-0">
+                            <i class="bi bi-exclamation-triangle-fill fs-5 me-2"></i>
+                            <div>Có <strong>{{ overbudget_categories|length }}</strong> danh mục chi tiêu đã vượt hạn mức ngân sách tháng!</div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success py-2 px-3 small d-flex align-items-center mb-0">
+                            <i class="bi bi-shield-check fs-5 me-2"></i>
+                            <div>Tất cả hạn mức ngân sách tháng này đang ở mức an toàn.</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột phải: Trạng thái nhân vật & Hướng dẫn tăng chỉ số -->
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-controller me-2 text-warning"></i>Hệ thống Phát triển Nhân vật</span>
+                <span class="rpg-badge badge-xp">RPG OS</span>
+            </div>
+            <div class="card-body">
+                <div class="p-3 rounded mb-3" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar-badge" style="width: 48px; height: 48px; font-size: 1.2rem;">
+                            {{ user.username|slice:":1"|upper }}
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-white mb-0">{{ user.get_full_name|default:user.username }}</h6>
+                            <div class="text-muted small">Cấp độ {{ level }} &bull; Chiến binh Hiệu suất</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-white small text-uppercase tracking-wider mb-2">Quy tắc Nhận Điểm Kinh Nghiệm (XP):</h6>
+                <div class="list-group list-group-flush mb-3">
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <span class="small"><i class="bi bi-check2-circle text-primary me-2"></i>Hoàn thành Task thông thường</span>
+                        <span class="badge bg-primary-subtle text-primary">+10 đến +30 XP</span>
+                    </div>
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <span class="small"><i class="bi bi-fire text-warning me-2"></i>Duy trì Thói quen hàng ngày</span>
+                        <span class="badge bg-warning-subtle text-warning">+5 XP/ngày</span>
+                    </div>
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <span class="small"><i class="bi bi-stopwatch text-danger me-2"></i>Mỗi phiên Pomodoro tập trung (25m)</span>
+                        <span class="badge bg-danger-subtle text-danger">+15 XP</span>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded" style="background: rgba(99, 102, 241, 0.08); border: 1px solid var(--border-focus);">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-lightbulb-fill text-primary fs-5 mt-1"></i>
+                        <p class="small text-muted mb-0">
+                            <strong>Chiến lược tuần này:</strong> Đặt các task trong ma trận Eisenhower ở ô <span class="text-danger fw-bold">Quan trọng &amp; Khẩn</span> để nhận tối đa +30 XP mỗi task!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 5. Hoạt động & Nhiệm vụ gần đây -->
 <div class="row g-4">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 fw-bold">Chi tiêu & Ngân sách</h5>
+    <!-- Giao dịch gần đây -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-receipt me-2 text-info"></i>Giao dịch Tuần Gần Đây</span>
+                <a href="{% url 'finance:transaction_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Tất cả &rarr;</a>
             </div>
-            <div class="card-body">
-                <p>Tổng thu tuần: <strong class="text-success">{{ total_income|floatformat:0 }} đ</strong></p>
-                <p>Tổng chi tuần: <strong class="text-danger">{{ total_expense|floatformat:0 }} đ</strong></p>
-                {% if overbudget_categories %}
-                    <div class="alert alert-danger py-2 mt-3">
-                        <i class="bi bi-exclamation-triangle-fill"></i> Có {{ overbudget_categories|length }} danh mục vượt ngân sách! (-HP)
-                    </div>
-                {% else %}
-                    <div class="alert alert-success py-2 mt-3">
-                        <i class="bi bi-shield-check"></i> Các ngân sách tháng đang trong mức an toàn!
-                    </div>
-                {% endif %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ngày</th>
+                            <th>Nội dung</th>
+                            <th>Ví</th>
+                            <th class="text-end">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in recent_txns %}
+                        <tr>
+                            <td class="text-muted small">{{ t.date|date:"d/m" }}</td>
+                            <td>
+                                <div class="fw-semibold text-white">{{ t.note|default:"Giao dịch" }}</div>
+                                <small class="text-muted">{{ t.category.name|default:"Chung" }}</small>
+                            </td>
+                            <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ t.wallet.name }}</span></td>
+                            <td class="text-end fw-bold {% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|floatformat:0 }} đ
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted small">Chưa có giao dịch nào trong tuần này.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 fw-bold">Trạng thái nhân vật & Gamification</h5>
+
+    <!-- Nhiệm vụ đang làm / gần đây -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-task me-2 text-primary"></i>Nhiệm vụ & Tiến độ Mục tiêu</span>
+                <a href="{% url 'productivity:kanban_board' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Kanban &rarr;</a>
             </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label d-flex justify-content-between">
-                        <span>Máu (HP):</span>
-                        <strong>{{ hp }}/100</strong>
-                    </label>
-                    <div class="progress" style="height: 15px;">
-                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ hp }}%;"></div>
+            <div class="list-group list-group-flush">
+                {% for task in recent_tasks %}
+                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <div class="fw-semibold {% if task.status == 'done' %}text-decoration-line-through text-muted{% else %}text-white{% endif %}">
+                            {{ task.title }}
+                        </div>
+                        <small class="text-muted">
+                            Mục tiêu: <span class="text-white-50">{{ task.goal.title }}</span> &bull; {{ task.actual_pomodoros }}/{{ task.estimated_pomodoros }} Pomodoro
+                        </small>
                     </div>
+                    <span class="badge {% if task.status == 'done' %}bg-success-subtle text-success{% elif task.status == 'in_progress' %}bg-primary-subtle text-primary{% else %}bg-secondary-subtle text-muted{% endif %}">
+                        {{ task.get_status_display }}
+                    </span>
                 </div>
-                <p class="text-muted small">
-                    💡 <em>Gợi ý:</em> Hoàn thành Task (+10 đến +30 XP), Hoàn thành thói quen (+5 XP). Nếu chi tiêu vượt ngân sách trong tháng sẽ bị trừ HP!
-                </p>
+                {% empty %}
+                <div class="list-group-item text-center py-4 text-muted small">
+                    Chưa có nhiệm vụ nào. Tạo nhiệm vụ tại <a href="{% url 'productivity:kanban_board' %}" class="text-primary">Bảng Kanban</a>!
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('weeklyFinanceChart');
+    if (!ctx) return;
+
+    const incomeVal = {{ total_income|default:0 }};
+    const expenseVal = {{ total_expense|default:0 }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Thu nhập tuần', 'Chi tiêu tuần'],
+            datasets: [{
+                data: [incomeVal, expenseVal],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.65)',
+                    'rgba(244, 63, 94, 0.65)'
+                ],
+                borderColor: [
+                    '#10b981',
+                    '#f43f5e'
+                ],
+                borderWidth: 1.5,
+                borderRadius: 8,
+                maxBarThickness: 50
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return new Intl.NumberFormat('vi-VN').format(context.raw) + ' đ';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { family: "'Plus Jakarta Sans', sans-serif" } }
+                },
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: {
+                        color: '#94a3b8',
+                        callback: function(val) {
+                            return (val >= 1000000) ? (val / 1000000) + 'M' : (val >= 1000 ? (val / 1000) + 'k' : val);
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}
