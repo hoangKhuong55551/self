@@ -42,9 +42,9 @@
 
             <div class="p-3 rounded text-start" style="background: rgba(99, 102, 241, 0.08); border: 1px solid var(--border-focus);">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-award-fill text-warning fs-5"></i>
+                    <i class="bi bi-clock-history text-primary fs-5"></i>
                     <span class="small text-muted">
-                        Hoàn thành mỗi phiên 25 phút sẽ nhận ngay <strong>+15 XP</strong> vào tiến trình thăng cấp nhân vật!
+                        Kỹ thuật Pomodoro giúp duy trì trạng thái tập trung sâu và tự động ghi nhận số giờ thực tế cho từng công việc.
                     </span>
                 </div>
             </div>
@@ -63,7 +63,7 @@
                         <strong class="text-white">{{ s.task.title }}</strong>
                         <small class="text-muted d-block">{{ s.start_time|date:"d/m/Y H:i" }}</small>
                     </div>
-                    <span class="badge bg-success-subtle text-success">+{{ s.duration_minutes }} phút &bull; 15 XP</span>
+                    <span class="badge bg-success-subtle text-success">+{{ s.duration_minutes }} phút hoàn thành</span>
                 </li>
                 {% empty %}
                 <li class="list-group-item text-center text-muted py-4 small">Chưa có phiên Pomodoro nào.</li>
@@ -152,7 +152,7 @@ function finishSession(taskId) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert(`🎉 Chúc mừng! Bạn đã hoàn thành phiên tập trung ${durationMins} phút và nhận được +15 XP!`);
+            alert(`🎉 Chúc mừng! Bạn đã hoàn thành phiên tập trung ${durationMins} phút.`);
             location.reload();
         }
     });

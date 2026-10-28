@@ -6,7 +6,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
         <h2 class="fw-bold mb-1" style="letter-spacing: -0.02em;">🚀 Hiệu suất &amp; Thói quen</h2>
-        <p class="text-muted mb-0">Quản trị mục tiêu OKRs, bảng Kanban, chuỗi Streak và bấm giờ Pomodoro</p>
+        <p class="text-muted mb-0">Quản trị mục tiêu OKRs, bảng Kanban và bấm giờ Pomodoro</p>
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'productivity:kanban_board' %}" class="btn btn-primary btn-sm">
@@ -16,7 +16,7 @@
             <i class="bi bi-bullseye me-1"></i> Mục tiêu OKR
         </a>
         <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-fire me-1"></i> Thói quen &amp; Streak
+            <i class="bi bi-calendar-check me-1"></i> Thói quen hàng ngày
         </a>
         <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-outline-danger btn-sm">
             <i class="bi bi-stopwatch me-1"></i> Pomodoro
@@ -83,8 +83,8 @@
         <!-- Thói quen trong ngày -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-fire me-2 text-danger"></i>Thói quen hôm nay ({{ today|date:"d/m" }})</span>
-                <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Xem Heatmap &rarr;</a>
+                <span><i class="bi bi-calendar-check me-2 text-primary"></i>Thói quen hôm nay ({{ today|date:"d/m" }})</span>
+                <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Xem Lịch sử &rarr;</a>
             </div>
             <div class="list-group list-group-flush">
                 {% for item in today_habits %}
@@ -92,7 +92,6 @@
                     <div>
                         <span class="fs-5 me-2">{{ item.habit.icon }}</span>
                         <strong class="text-white">{{ item.habit.name }}</strong>
-                        <small class="text-muted d-block ms-4">Streak: {{ item.habit.current_streak }} ngày liên tiếp 🔥</small>
                     </div>
                     <button class="btn btn-sm {% if item.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
                             id="habit-btn-{{ item.habit.pk }}"
@@ -112,7 +111,7 @@
                 <i class="bi bi-stopwatch"></i>
             </div>
             <h5 class="fw-bold text-white mb-2">Đồng hồ Tập trung (Pomodoro)</h5>
-            <p class="text-muted small mb-3">Mỗi phiên 25 phút giúp tăng cường sự tập trung và nhận ngay +15 XP!</p>
+            <p class="text-muted small mb-3">Mỗi phiên 25 phút giúp tăng cường sự tập trung và đo lường giờ làm việc thực tế.</p>
             <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-danger btn-sm py-2">
                 <i class="bi bi-play-circle-fill me-1"></i> Bắt đầu phiên tập trung
             </a>

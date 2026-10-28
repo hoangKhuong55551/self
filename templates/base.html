@@ -79,7 +79,7 @@
                             {{ user.get_full_name|default:user.username }}
                         </div>
                         <div class="text-muted small">
-                            Lv.{{ profile.level|default:1 }} Adventurer
+                            {{ user.email|default:"Thành viên" }}
                         </div>
                     </div>
                     <form action="{% url 'logout' %}" method="post" class="m-0 p-0">
@@ -112,21 +112,12 @@
                     </div>
                 </div>
 
-                <!-- Gamification Badges on Topbar (XP & Streak) -->
-                {% if user.is_authenticated and profile %}
+                <!-- User profile badge on Topbar -->
+                {% if user.is_authenticated %}
                 <div class="d-flex align-items-center gap-2">
-                    <div class="rpg-badge badge-level">
-                        <i class="bi bi-award-fill"></i>
-                        <span>Cấp {{ profile.level }}</span>
-                    </div>
-                    <div class="rpg-badge badge-xp">
-                        <i class="bi bi-lightning-charge-fill"></i>
-                        <span>{{ profile.xp }} XP</span>
-                    </div>
-                    <div class="rpg-badge badge-streak">
-                        <i class="bi bi-fire"></i>
-                        <span>{{ profile.longest_streak }}d Streak</span>
-                    </div>
+                    <span class="badge bg-dark-subtle border border-dark-subtle text-muted px-3 py-2">
+                        <i class="bi bi-person-circle me-1 text-primary"></i> {{ user.username }}
+                    </span>
                 </div>
                 {% endif %}
             </header>

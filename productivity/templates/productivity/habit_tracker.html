@@ -5,11 +5,11 @@
 {% block content %}
 <div class="row g-4">
     <div class="col-lg-8">
-        <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">🔥 Thói quen &amp; Biểu đồ Đóng góp (Heatmap)</h3>
-        <p class="text-muted mb-4 small">Lịch sử 30 ngày gần nhất &bull; Duy trì chuỗi Streak để tích lũy điểm kinh nghiệm (XP)</p>
+        <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">📅 Thói quen Hàng ngày &amp; Lịch sử</h3>
+        <p class="text-muted mb-4 small">Lịch sử hoàn thành thói quen trong 30 ngày gần nhất</p>
 
         <div class="card p-4 mb-4">
-            <h5 class="fw-bold text-white mb-3"><i class="bi bi-calendar-week me-2 text-warning"></i>Ma trận Kỷ luật (30 ngày)</h5>
+            <h5 class="fw-bold text-white mb-3"><i class="bi bi-calendar-week me-2 text-primary"></i>Nhật ký Theo dõi (30 ngày)</h5>
             <div class="table-responsive">
                 <table class="table text-center align-middle mb-0" style="font-size: 0.85rem;">
                     <thead>
@@ -20,7 +20,6 @@
                                 {{ d|date:"d" }}
                             </th>
                             {% endfor %}
-                            <th>Streak</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -38,11 +37,10 @@
                                 {% endif %}
                             </td>
                             {% endfor %}
-                            <td class="fw-bold text-warning">{{ row.streak }}🔥</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="32" class="text-muted py-5 small">Chưa có thói quen nào.</td>
+                            <td colspan="31" class="text-muted py-5 small">Chưa có thói quen nào.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
