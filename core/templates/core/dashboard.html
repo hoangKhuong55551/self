@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load core_tags %}
 
 {% block title %}Dashboard Tổng quan | Life OS{% endblock %}
 
@@ -14,29 +15,32 @@
         </p>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'finance:transaction_list' %}" class="btn btn-outline-secondary btn-sm">
+        <a href="{% url 'finance:transaction_list' %}" class="btn btn-outline-secondary btn-sm px-3">
             <i class="bi bi-plus-circle me-1"></i> Giao dịch mới
         </a>
-        <a href="{% url 'productivity:kanban_board' %}" class="btn btn-primary btn-sm">
+        <a href="{% url 'productivity:kanban_board' %}" class="btn btn-kanban btn-sm px-3 shadow-sm">
             <i class="bi bi-kanban me-1"></i> Bảng Kanban
         </a>
     </div>
 </div>
 
-<!-- 2. Bốn thẻ KPI chính - Kích thước vừa vặn, bố cục hài hòa -->
+<!-- 2. Bốn thẻ KPI chính -->
 <div class="row g-3 mb-4">
     <!-- Thẻ 1: Tổng số dư ví -->
     <div class="col-sm-6 col-xl-3">
         <div class="kpi-card">
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted text-uppercase small fw-semibold">Tổng số dư ví</span>
-                <div class="kpi-icon-wrap text-primary">
+                <div class="kpi-icon-wrap" style="color: #38bdf8;">
                     <i class="bi bi-wallet2"></i>
                 </div>
             </div>
-            <div class="kpi-value">{{ total_balance|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="kpi-value">{{ total_balance|currency_vn }} <small class="fs-6 text-muted font-monospace">đ</small></div>
             <div class="small text-muted">
-                Tiết kiệm tuần: <strong class="text-success">+{{ savings_this_week|floatformat:0 }} đ</strong>
+                Tiết kiệm tuần: 
+                <strong class="{% if savings_this_week > 0 %}text-success{% elif savings_this_week < 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {{ savings_this_week|currency_signed_vn }} đ
+                </strong>
             </div>
         </div>
     </div>
@@ -46,11 +50,11 @@
         <div class="kpi-card">
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted text-uppercase small fw-semibold">Nhiệm vụ hoàn thành</span>
-                <div class="kpi-icon-wrap text-success">
+                <div class="kpi-icon-wrap" style="color: #34d399;">
                     <i class="bi bi-check2-circle"></i>
                 </div>
             </div>
-            <div class="kpi-value">{{ tasks_completed }} <small class="fs-6 text-muted font-monospace">tasks</small></div>
+            <div class="kpi-value">{{ tasks_completed }} <small class="fs-6 text-muted">nhiệm vụ</small></div>
             <div class="small text-muted">
                 {{ habits_completed }} lượt thói quen xong tuần này
             </div>
@@ -62,11 +66,11 @@
         <div class="kpi-card">
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted text-uppercase small fw-semibold">Thời gian tập trung</span>
-                <div class="kpi-icon-wrap text-warning">
+                <div class="kpi-icon-wrap" style="color: #fbbf24;">
                     <i class="bi bi-stopwatch"></i>
                 </div>
             </div>
-            <div class="kpi-value">{{ focus_hours }} <small class="fs-6 text-muted font-monospace">giờ</small></div>
+            <div class="kpi-value">{{ focus_hours|float_vn:1 }} <small class="fs-6 text-muted">giờ</small></div>
             <div class="small text-muted">
                 {{ pomodoro_sessions }} phiên Pomodoro đã xong
             </div>
@@ -78,11 +82,11 @@
         <div class="kpi-card">
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted text-uppercase small fw-semibold">Điểm GPA hiện tại</span>
-                <div class="kpi-icon-wrap text-info">
+                <div class="kpi-icon-wrap" style="color: #38bdf8;">
                     <i class="bi bi-mortarboard"></i>
                 </div>
             </div>
-            <div class="kpi-value">{{ current_gpa }} <small class="fs-6 text-muted font-monospace">/ 4.0</small></div>
+            <div class="kpi-value">{{ current_gpa|float_vn:2 }} <small class="fs-6 text-muted font-monospace">/ 4.0</small></div>
             <div class="small text-muted">
                 Học kỳ chính thức hiện tại
             </div>
@@ -90,9 +94,9 @@
     </div>
 </div>
 
-<!-- 3. Khu vực Biểu đồ Thu chi & Hạn mức ngân sách -->
+<!-- 3. Khu vực Dòng tiền & Ngân sách -->
 <div class="row g-3 mb-4">
-    <!-- Cột trái: Biểu đồ Thu Chi -->
+    <!-- Cột trái: Dòng tiền Tuần này -->
     <div class="col-lg-7">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -102,20 +106,20 @@
             <div class="card-body">
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <div class="p-2 px-3 rounded" style="background: var(--accent-emerald-soft); border: 1px solid rgba(16, 185, 129, 0.2);">
-                            <span class="text-muted small d-block" style="font-size: 0.78rem;">Tổng thu tuần</span>
-                            <span class="fs-6 fw-bold text-success">+{{ total_income|floatformat:0 }} đ</span>
+                        <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <span class="text-muted small d-block mb-1" style="font-size: 0.8rem;">Tổng thu tuần</span>
+                            <span class="fs-5 fw-bold text-success">+{{ total_income|currency_vn }} đ</span>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="p-2 px-3 rounded" style="background: var(--accent-rose-soft); border: 1px solid rgba(244, 63, 94, 0.2);">
-                            <span class="text-muted small d-block" style="font-size: 0.78rem;">Tổng chi tuần</span>
-                            <span class="fs-6 fw-bold text-danger">-{{ total_expense|floatformat:0 }} đ</span>
+                        <div class="p-3 rounded" style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.2);">
+                            <span class="text-muted small d-block mb-1" style="font-size: 0.8rem;">Tổng chi tuần</span>
+                            <span class="fs-5 fw-bold text-danger">-{{ total_expense|currency_vn }} đ</span>
                         </div>
                     </div>
                 </div>
 
-                <div style="height: 180px; position: relative;">
+                <div style="height: 190px; position: relative;">
                     <canvas id="weeklyFinanceChart"></canvas>
                 </div>
 
@@ -127,9 +131,9 @@
                             <div>Có <strong>{{ overbudget_categories|length }}</strong> danh mục chi tiêu đã vượt hạn mức ngân sách tháng!</div>
                         </div>
                     {% else %}
-                        <div class="alert alert-success py-2 px-3 small d-flex align-items-center mb-0">
-                            <i class="bi bi-shield-check fs-5 me-2"></i>
-                            <div>Hạn mức ngân sách tháng này đang ở mức an toàn.</div>
+                        <div class="alert alert-success py-2 px-3 small d-flex align-items-center mb-0" style="background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.25);">
+                            <i class="bi bi-shield-check fs-5 me-2 text-success"></i>
+                            <span class="text-success-emphasis">Hạn mức ngân sách tháng này đang ở mức an toàn.</span>
                         </div>
                     {% endif %}
                 </div>
@@ -137,38 +141,39 @@
         </div>
     </div>
 
-    <!-- Cột phải: Ngân sách Tháng & GPA Simulator -->
+    <!-- Cột phải: Ngân sách Tháng & Thẻ Học tập Gradient -->
     <div class="col-lg-5">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-pie-chart me-2 text-info"></i>Ngân sách Tháng</span>
                 <a href="{% url 'finance:budget_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Chi tiết &rarr;</a>
             </div>
-            <div class="card-body">
-                {% for b in current_budgets %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="small fw-semibold text-white">{{ b.category.name }}</span>
-                        <span class="small text-muted">{{ b.spent|floatformat:0 }} / {{ b.amount|floatformat:0 }} đ</span>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    {% for b in current_budgets %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-semibold text-white">{{ b.category.name }}</span>
+                            <span class="small text-muted font-monospace">{{ b.spent|currency_vn }} đ / {{ b.amount|currency_vn }} đ</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar {% if forloop.first %}progress-budget-blue{% else %}progress-budget-amber{% endif %}"
+                                 style="width: {{ b.percent_used }}%;"></div>
+                        </div>
                     </div>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar {% if b.is_over_budget %}bg-danger{% elif b.percent_used > 80 %}bg-warning{% else %}bg-primary{% endif %}"
-                             style="width: {{ b.percent_used }}%;"></div>
-                    </div>
+                    {% empty %}
+                    <p class="text-muted small text-center py-4">Chưa có ngân sách nào được thiết lập trong tháng này.</p>
+                    {% endfor %}
                 </div>
-                {% empty %}
-                <p class="text-muted small text-center py-4">Chưa có ngân sách nào được thiết lập trong tháng này.</p>
-                {% endfor %}
 
-                <hr class="my-3" style="border-color: var(--border-subtle);">
-
-                <div class="p-3 rounded" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle);">
+                <!-- Thẻ Học tập Gradient Deep Glow -->
+                <div class="card-academic-banner p-3 rounded mt-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="text-muted small d-block">Phân hệ Học tập</span>
-                            <span class="fw-bold text-white">GPA: {{ current_gpa }} / 4.0</span>
+                            <span class="text-muted small d-block mb-1">Phân hệ Học tập</span>
+                            <span class="fs-5 fw-bold text-white">GPA: {{ current_gpa|float_vn:2 }} / 4.0</span>
                         </div>
-                        <a href="{% url 'academic:gpa_simulator' %}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{% url 'academic:gpa_simulator' %}" class="btn btn-simulator btn-sm px-3 py-2">
                             Mô phỏng GPA
                         </a>
                     </div>
@@ -207,7 +212,7 @@
                             </td>
                             <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ t.wallet.name }}</span></td>
                             <td class="text-end fw-semibold small {% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
-                                {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|floatformat:0 }} đ
+                                {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|currency_vn }} đ
                             </td>
                         </tr>
                         {% empty %}
@@ -270,16 +275,16 @@ document.addEventListener('DOMContentLoaded', function () {
             datasets: [{
                 data: [incomeVal, expenseVal],
                 backgroundColor: [
-                    'rgba(16, 185, 129, 0.7)',
-                    'rgba(244, 63, 94, 0.7)'
+                    'rgba(16, 185, 129, 0.75)',
+                    'rgba(244, 63, 94, 0.75)'
                 ],
                 borderColor: [
                     '#10b981',
                     '#f43f5e'
                 ],
                 borderWidth: 1,
-                borderRadius: 6,
-                maxBarThickness: 42
+                borderRadius: 8,
+                maxBarThickness: 46
             }]
         },
         options: {
