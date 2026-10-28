@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Kho Code Snippets | Life OS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="fw-bold mb-0">💻 Kho Code Snippets Cá Nhân</h3>
+            <form method="get" class="d-flex" style="max-width: 320px;">
+                <input type="text" name="q" class="form-control form-control-sm me-2" placeholder="Tìm kiếm code..." value="{{ query }}">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Tìm</button>
+            </form>
+        </div>
+
+        <div class="row g-3">
+            {% for cs in snippets %}
+            <div class="col-12">
+                <div class="card shadow-sm border-0 p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="fw-bold mb-0">
+                            <a href="{% url 'academic:snippet_detail' cs.pk %}" class="text-decoration-none text-dark">{{ cs.title }}</a>
+                        </h5>
+                        <span class="badge bg-dark">{{ cs.language }}</span>
+                    </div>
+                    <p class="text-muted small mb-2">{{ cs.description|default:"Không có mô tả" }}</p>
+                    <pre class="bg-dark text-light p-3 rounded mb-2 overflow-auto" style="max-height: 180px;"><code class="language-{{ cs.language }}">{{ cs.code }}</code></pre>
+                    <div class="d-flex justify-content-between align-items-center small text-muted">
+                        <div>
+                            {% for tag in cs.tags.all %}
+                            <span class="badge bg-light text-dark border">{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                        <a href="{% url 'academic:snippet_detail' cs.pk %}" class="btn btn-sm btn-outline-primary">Xem chi tiết</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5 text-muted">Chưa có đoạn code nào. Hãy lưu trữ snippet đầu tiên!</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Form thêm snippet -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 p-3">
+            <h5 class="fw-bold mb-3">+ Lưu Code Snippet</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tiêu đề đoạn code</label>
+                    {{ form.title }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ngôn ngữ lập trình</label>
+                    {{ form.language }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mã nguồn (Code)</label>
+                    {{ form.code }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mô tả / Cách sử dụng</label>
+                    {{ form.description }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Gắn thẻ (Tags)</label>
+                    {{ form.tags }}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Lưu đoạn code</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

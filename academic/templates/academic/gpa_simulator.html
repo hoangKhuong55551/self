@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Mô phỏng Điểm GPA | Life OS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 p-4 mb-4">
+            <h3 class="fw-bold mb-2">🎯 Bộ Mô Phỏng Mục Tiêu GPA (GPA Simulator)</h3>
+            <p class="text-muted">Tính toán chính xác điểm trung bình bạn cần đạt ở các kỳ tới để đạt danh hiệu mong muốn (Khá, Giỏi, Xuất sắc).</p>
+
+            <div class="row g-3 my-2 text-center">
+                <div class="col-6">
+                    <div class="p-3 bg-light rounded">
+                        <span class="text-muted small">Điểm tích lũy hiện tại (cGPA):</span>
+                        <h2 class="fw-bold text-primary mb-0">{{ current_cgpa }}</h2>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-3 bg-light rounded">
+                        <span class="text-muted small">Số tín chỉ đã tích lũy:</span>
+                        <h2 class="fw-bold text-dark mb-0">{{ current_credits }} TC</h2>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Điểm GPA mục tiêu khi tốt nghiệp:</label>
+                    <input type="number" name="target_gpa" class="form-control" step="0.05" min="2.0" max="4.0" value="{{ target_gpa|default:'3.2' }}" required>
+                    <small class="text-muted">VD: 3.2 (Giỏi), 3.6 (Xuất sắc)</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Số tín chỉ còn lại cần học:</label>
+                    <input type="number" name="remaining_credits" class="form-control" min="1" max="150" value="{{ remaining_credits|default:'30' }}" required>
+                    <small class="text-muted">Tổng số tín chỉ các kỳ tương lai</small>
+                </div>
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-calculator"></i> Tính toán mục tiêu</button>
+                </div>
+            </form>
+
+            {% if required_gpa is not None %}
+            <div class="mt-4 p-4 rounded {% if possible %}bg-success-subtle border border-success{% else %}bg-danger-subtle border border-danger{% endif %}">
+                <h5 class="fw-bold mb-2">Kết quả phân tích:</h5>
+                {% if possible %}
+                <p class="mb-1">
+                    Để đạt điểm tốt nghiệp <strong>{{ target_gpa }}</strong>, bạn cần đạt điểm trung bình tối thiểu:
+                </p>
+                <h2 class="fw-bold text-success display-6 mb-2">{{ required_gpa }} <small class="fs-6 text-muted">/ 4.0</small></h2>
+                <p class="small text-muted mb-0">trong tất cả <strong>{{ remaining_credits }}</strong> tín chỉ còn lại.</p>
+                {% else %}
+                <h4 class="text-danger fw-bold">Mục tiêu không khả thi!</h4>
+                <p class="mb-0">
+                    Bạn cần đạt <strong>{{ required_gpa }}</strong> (vượt quá mức tối đa 4.0). Hãy cân nhắc cải thiện điểm các môn cũ hoặc điều chỉnh mục tiêu phù hợp hơn.
+                </p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
