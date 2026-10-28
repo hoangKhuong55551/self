@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Mục tiêu OKRs | Life OS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h3 class="fw-bold mb-3">Mục tiêu & Kết quả then chốt (OKRs)</h3>
+        <div class="row g-3">
+            {% for g in goals %}
+            <div class="col-12">
+                <div class="card shadow-sm border-0 p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h5 class="fw-bold mb-0">{{ g.title }}</h5>
+                            <small class="text-muted">{{ g.description|default:"Không có mô tả" }}</small>
+                        </div>
+                        <span class="badge {% if g.status == 'completed' %}bg-success{% elif g.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %} fs-6">
+                            {{ g.progress|floatformat:0 }}%
+                        </span>
+                    </div>
+
+                    <div class="progress my-2" style="height: 12px;">
+                        <div class="progress-bar progress-bar-striped {% if g.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
+                             style="width: {{ g.progress }}%;"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
+                        <span><i class="bi bi-list-check"></i> {{ g.tasks.all|length }} công việc con</span>
+                        {% if g.deadline %}<span><i class="bi bi-calendar-event"></i> Hạn chót: {{ g.deadline|date:"d/m/Y" }}</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5 text-muted">
+                Chưa có mục tiêu nào. Hãy thiết lập mục tiêu lớn của bạn ở cột bên phải!
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <h5 class="fw-bold mb-3">Tạo mục tiêu mới</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tên mục tiêu</label>
+                    {{ form.title }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Trạng thái</label>
+                    {{ form.status }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hạn chót</label>
+                    {{ form.deadline }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Màu nhận diện</label>
+                    {{ form.color }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mô tả chi tiết</label>
+                    {{ form.description }}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Lưu mục tiêu</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Hiệu suất & Thói quen | Life OS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">🚀 Hiệu suất & Thói quen</h2>
+        <span class="text-muted">Quản trị mục tiêu OKRs, bảng Kanban, chuỗi Streak và bấm giờ Pomodoro</span>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'productivity:kanban_board' %}" class="btn btn-primary"><i class="bi bi-kanban"></i> Bảng Kanban</a>
+        <a href="{% url 'productivity:goal_list' %}" class="btn btn-outline-secondary"><i class="bi bi-bullseye"></i> Mục tiêu OKR</a>
+        <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-outline-secondary"><i class="bi bi-fire"></i> Thói quen & Streak</a>
+        <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-outline-danger"><i class="bi bi-stopwatch"></i> Pomodoro</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Cột trái: Goals & Tiến độ OKRs -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">🎯 Mục tiêu đang triển khai</h5>
+                <a href="{% url 'productivity:goal_list' %}" class="btn btn-sm btn-outline-primary">+ Mục tiêu mới</a>
+            </div>
+            <div class="card-body">
+                {% for g in goals %}
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                            <h6 class="fw-bold mb-0">{{ g.title }}</h6>
+                            <small class="text-muted">{{ g.tasks.all|length }} công việc con {% if g.deadline %}| Hạn chót: {{ g.deadline|date:"d/m/Y" }}{% endif %}</small>
+                        </div>
+                        <span class="badge {% if g.status == 'completed' %}bg-success{% elif g.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %}">
+                            {{ g.progress|floatformat:0 }}%
+                        </span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar progress-bar-striped {% if g.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
+                             style="width: {{ g.progress }}%;"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-3">Chưa có mục tiêu nào. Hãy thiết lập mục tiêu lớn của bạn!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Nhiệm vụ đang làm dở -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">📋 Việc cần làm hôm nay</h5>
+                <a href="{% url 'productivity:kanban_board' %}" class="btn btn-sm btn-outline-primary">Mở Kanban</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for t in tasks_in_progress %}
+                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <span class="badge bg-warning text-dark me-2">Đang làm</span>
+                        <strong>{{ t.title }}</strong>
+                        <small class="text-muted d-block mt-1">Mục tiêu: {{ t.goal.title }} | Dự kiến: {{ t.estimated_pomodoros }} Pomodoro</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-success" onclick="quickCompleteTask({{ t.pk }})">Xong</button>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted py-3">Không có việc nào đang dở dang.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột phải: Thói quen hôm nay & Pomodoro Shortcut -->
+    <div class="col-lg-5">
+        <!-- Thói quen trong ngày -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">🔥 Thói quen hôm nay ({{ today|date:"d/m" }})</h5>
+                <a href="{% url 'productivity:habit_tracker' %}" class="btn btn-sm btn-outline-primary">Xem Heatmap</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for item in today_habits %}
+                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <span class="fs-5 me-2">{{ item.habit.icon }}</span>
+                        <strong>{{ item.habit.name }}</strong>
+                        <small class="text-muted d-block ms-4">Streak: {{ item.habit.current_streak }} ngày liên tiếp 🔥</small>
+                    </div>
+                    <button class="btn btn-sm {% if item.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                            id="habit-btn-{{ item.habit.pk }}"
+                            onclick="toggleHabit({{ item.habit.pk }})">
+                        {% if item.completed %}Đã xong ✓{% else %}Chưa làm{% endif %}
+                    </button>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted py-3">Chưa thiết lập thói quen nào.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Pomodoro Quick Box -->
+        <div class="card shadow-sm border-0 bg-dark text-white p-4 text-center">
+            <h5 class="fw-bold mb-2">Đồng hồ Tập trung (Pomodoro)</h5>
+            <p class="text-muted small">Mỗi phiên 25 phút giúp tăng sự tập trung và nhận +15 XP!</p>
+            <a href="{% url 'productivity:pomodoro_timer' %}" class="btn btn-danger btn-lg mt-2">
+                <i class="bi bi-play-circle-fill"></i> Bắt đầu phiên tập trung
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleHabit(habitId) {
+    fetch(`/productivity/habits/${habitId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.getElementById(`habit-btn-${habitId}`);
+            if (data.completed) {
+                btn.className = 'btn btn-sm btn-success';
+                btn.innerText = 'Đã xong ✓';
+            } else {
+                btn.className = 'btn btn-sm btn-outline-secondary';
+                btn.innerText = 'Chưa làm';
+            }
+        }
+    });
+}
+
+function quickCompleteTask(taskId) {
+    fetch(`/productivity/tasks/${taskId}/status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'done' })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

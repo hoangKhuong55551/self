@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Đồng hồ Pomodoro | Life OS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card shadow border-0 p-4 text-center mb-4">
+            <h4 class="fw-bold mb-3">🍅 Phiên Tập Trung Pomodoro</h4>
+
+            <div class="mb-4">
+                <label class="form-label text-muted small">Chọn công việc bạn muốn thực hiện:</label>
+                <select id="taskSelect" class="form-select form-select-lg">
+                    <option value="">-- Chọn công việc --</option>
+                    {% for t in tasks %}
+                    <option value="{{ t.pk }}">{{ t.title }} (Mục tiêu: {{ t.goal.title }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Đồng hồ số -->
+            <div class="display-1 fw-bold my-4 font-monospace" id="timerDisplay">25:00</div>
+
+            <!-- Các nút điều khiển -->
+            <div class="d-flex justify-content-center gap-3 mb-4">
+                <button id="startBtn" class="btn btn-danger btn-lg px-4" onclick="startTimer()">
+                    <i class="bi bi-play-fill"></i> Bắt đầu
+                </button>
+                <button id="pauseBtn" class="btn btn-outline-secondary btn-lg px-4" onclick="pauseTimer()" disabled>
+                    <i class="bi bi-pause-fill"></i> Tạm dừng
+                </button>
+                <button id="resetBtn" class="btn btn-outline-dark btn-lg px-4" onclick="resetTimer()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+                </button>
+            </div>
+
+            <div class="btn-group mb-3">
+                <button class="btn btn-outline-secondary btn-sm" onclick="setDuration(25)">25 Phút (Chuẩn)</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="setDuration(15)">15 Phút</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="setDuration(5)">5 Phút (Nghỉ)</button>
+            </div>
+
+            <div class="alert alert-info py-2 small mb-0">
+                <i class="bi bi-info-circle"></i> Hoàn thành mỗi phiên 25 phút sẽ nhận ngay <strong>+15 XP</strong> vào nhân vật!
+            </div>
+        </div>
+
+        <!-- Lịch sử các phiên gần đây -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0">Lịch sử tập trung gần đây</h6>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for s in recent_sessions %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ s.task.title }}</strong>
+                        <small class="text-muted d-block">{{ s.start_time|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    <span class="badge bg-success">+{{ s.duration_minutes }} phút (15 XP)</span>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-center text-muted py-3">Chưa có phiên Pomodoro nào.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let totalSeconds = 25 * 60;
+let remainingSeconds = totalSeconds;
+let timerInterval = null;
+
+function updateDisplay() {
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    document.getElementById('timerDisplay').innerText = 
+        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function setDuration(mins) {
+    pauseTimer();
+    totalSeconds = mins * 60;
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+}
+
+function startTimer() {
+    const taskId = document.getElementById('taskSelect').value;
+    if (!taskId) {
+        alert("Vui lòng chọn một công việc trước khi bắt đầu!");
+        return;
+    }
+
+    if (timerInterval) return;
+
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('pauseBtn').disabled = false;
+
+    timerInterval = setInterval(() => {
+        if (remainingSeconds > 0) {
+            remainingSeconds--;
+            updateDisplay();
+        } else {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            finishSession(taskId);
+        }
+    }, 1000);
+}
+
+function pauseTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('pauseBtn').disabled = true;
+}
+
+function resetTimer() {
+    pauseTimer();
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+}
+
+function finishSession(taskId) {
+    const durationMins = Math.round(totalSeconds / 60);
+    const formData = new FormData();
+    formData.append('task_id', taskId);
+    formData.append('duration_minutes', durationMins);
+    formData.append('note', 'Hoàn thành phiên Pomodoro');
+
+    fetch('/productivity/pomodoro/save/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`🎉 Chúc mừng! Bạn đã hoàn thành phiên tập trung ${durationMins} phút và nhận được +15 XP!`);
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

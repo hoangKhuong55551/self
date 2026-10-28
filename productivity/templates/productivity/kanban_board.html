@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Bảng Kanban | Life OS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-0">📋 Bảng Kanban Quản lý Công việc</h3>
+        <span class="text-muted">Kéo thả hoặc di chuyển trạng thái công việc và theo dõi độ ưu tiên</span>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+        <i class="bi bi-plus-lg"></i> Thêm Task mới
+    </button>
+</div>
+
+<!-- Modal thêm Task -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Tạo công việc mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    {% if not has_goals %}
+                    <div class="alert alert-warning">Bạn cần tạo ít nhất một Mục tiêu (Goal) trước khi thêm Task! <a href="{% url 'productivity:goal_list' %}">Tạo mục tiêu ngay</a></div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">Thuộc mục tiêu</label>
+                        {{ form.goal }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tên công việc</label>
+                        {{ form.title }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ma trận Eisenhower (Độ quan trọng)</label>
+                        {{ form.quadrant }}
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Trạng thái</label>
+                            {{ form.status }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Dự kiến Pomodoros</label>
+                            {{ form.estimated_pomodoros }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Hạn hoàn thành</label>
+                        {{ form.due_date }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mô tả chi tiết</label>
+                        {{ form.description }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary" {% if not has_goals %}disabled{% endif %}>Tạo Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3 Cột Kanban -->
+<div class="row g-3">
+    <!-- Cột To Do -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-secondary">⏳ CẦN LÀM (TO DO)</h6>
+                <span class="badge bg-secondary">{{ todo_tasks|length }}</span>
+            </div>
+            <div class="card-body p-2" style="min-height: 500px;">
+                {% for t in todo_tasks %}
+                <div class="card shadow-sm border-0 mb-2 p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="badge bg-light text-dark border">{{ t.get_quadrant_display }}</span>
+                        <small class="text-muted"><i class="bi bi-stopwatch"></i> {{ t.actual_pomodoros }}/{{ t.estimated_pomodoros }}</small>
+                    </div>
+                    <h6 class="fw-bold mb-1">{{ t.title }}</h6>
+                    <small class="text-muted mb-2 d-block">Mục tiêu: {{ t.goal.title }}</small>
+                    <div class="d-flex justify-content-end gap-1 mt-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="setTaskStatus({{ t.pk }}, 'in_progress')">Bắt đầu ➔</button>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-4 small">Trống</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột In Progress -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-primary">⚙️ ĐANG LÀM (IN PROGRESS)</h6>
+                <span class="badge bg-primary">{{ in_progress_tasks|length }}</span>
+            </div>
+            <div class="card-body p-2" style="min-height: 500px;">
+                {% for t in in_progress_tasks %}
+                <div class="card shadow-sm border-0 mb-2 p-3 border-start border-primary border-4">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="badge bg-light text-dark border">{{ t.get_quadrant_display }}</span>
+                        <small class="text-muted"><i class="bi bi-stopwatch"></i> {{ t.actual_pomodoros }}/{{ t.estimated_pomodoros }}</small>
+                    </div>
+                    <h6 class="fw-bold mb-1">{{ t.title }}</h6>
+                    <small class="text-muted mb-2 d-block">Mục tiêu: {{ t.goal.title }}</small>
+                    <div class="d-flex justify-content-between gap-1 mt-2">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="setTaskStatus({{ t.pk }}, 'todo')">⬅ Hoãn</button>
+                        <button class="btn btn-sm btn-success" onclick="setTaskStatus({{ t.pk }}, 'done')">Xong ✓</button>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-4 small">Trống</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột Done -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-success">✅ HOÀN THÀNH (DONE)</h6>
+                <span class="badge bg-success">{{ done_tasks|length }}</span>
+            </div>
+            <div class="card-body p-2" style="min-height: 500px;">
+                {% for t in done_tasks %}
+                <div class="card shadow-sm border-0 mb-2 p-3 opacity-75">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="badge bg-success">Đã hoàn thành</span>
+                        <small class="text-muted">{{ t.completed_at|date:"d/m H:i" }}</small>
+                    </div>
+                    <h6 class="text-decoration-line-through mb-1">{{ t.title }}</h6>
+                    <small class="text-muted d-block">Mục tiêu: {{ t.goal.title }}</small>
+                    <div class="d-flex justify-content-end mt-2">
+                        <button class="btn btn-sm btn-link text-muted p-0" onclick="setTaskStatus({{ t.pk }}, 'todo')">Hoàn tác</button>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-4 small">Trống</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setTaskStatus(taskId, newStatus) {
+    fetch(`/productivity/tasks/${taskId}/status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}
