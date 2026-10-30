@@ -108,7 +108,7 @@
 <div class="row g-3">
     <!-- Cột To Do -->
     <div class="col-md-4">
-        <div class="card h-100" style="background: rgba(17, 24, 39, 0.6);">
+        <div class="card h-100 kanban-column">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="text-uppercase small fw-bold text-muted"><i class="bi bi-hourglass me-1"></i> Cần làm (To Do)</span>
                 <span class="badge bg-secondary-subtle text-muted">{{ todo_tasks|length }}</span>
@@ -125,7 +125,7 @@
 
     <!-- Cột In Progress -->
     <div class="col-md-4">
-        <div class="card h-100" style="background: rgba(17, 24, 39, 0.6);">
+        <div class="card h-100 kanban-column">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="text-uppercase small fw-bold text-primary"><i class="bi bi-gear-wide-connected me-1"></i> Đang làm (In Progress)</span>
                 <span class="badge bg-primary-subtle text-primary">{{ in_progress_tasks|length }}</span>
@@ -142,7 +142,7 @@
 
     <!-- Cột Done -->
     <div class="col-md-4">
-        <div class="card h-100" style="background: rgba(17, 24, 39, 0.6);">
+        <div class="card h-100 kanban-column">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="text-uppercase small fw-bold text-success"><i class="bi bi-check2-circle me-1"></i> Hoàn thành (Done)</span>
                 <span class="badge bg-success-subtle text-success">{{ done_tasks|length }}</span>

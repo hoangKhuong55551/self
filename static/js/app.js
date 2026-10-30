@@ -13,14 +13,14 @@ document.addEventListener('DOMContentLoaded', function () {
   if (toggleBtn && sidebar) {
     toggleBtn.addEventListener('click', function () {
       sidebar.classList.toggle('show');
-      if (overlay) overlay.style.display = sidebar.classList.contains('show') ? 'block' : 'none';
+      if (overlay) overlay.classList.toggle('show', sidebar.classList.contains('show'));
     });
   }
 
   if (overlay) {
     overlay.addEventListener('click', function () {
       sidebar.classList.remove('show');
-      overlay.style.display = 'none';
+      overlay.classList.remove('show');
     });
   }
 
@@ -32,44 +32,29 @@ document.addEventListener('DOMContentLoaded', function () {
   const html = document.documentElement;
 
   // Restore saved theme
-  const savedTheme = localStorage.getItem('lifeos-theme') || 'dark';
-  applyTheme(savedTheme);
+  applyTheme(html.getAttribute('data-bs-theme') || 'dark');
 
   if (themeBtn) {
     themeBtn.addEventListener('click', function () {
       const current = html.getAttribute('data-bs-theme');
       const next = current === 'dark' ? 'light' : 'dark';
       applyTheme(next);
-      localStorage.setItem('lifeos-theme', next);
+      try { localStorage.setItem('lifeos-theme', next); } catch (e) {}
     });
   }
 
   function applyTheme(theme) {
+    // All colors live in main.css under [data-bs-theme]; only the attribute changes here
     html.setAttribute('data-bs-theme', theme);
     if (themeIcon) {
       themeIcon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
     }
-    // Adjust custom CSS vars for light mode
-    if (theme === 'light') {
-      html.style.setProperty('--bg-base', '#f1f5f9');
-      html.style.setProperty('--bg-surface', '#ffffff');
-      html.style.setProperty('--bg-surface-elevated', '#f8fafc');
-      html.style.setProperty('--bg-surface-hover', '#e2e8f0');
-      html.style.setProperty('--text-main', '#0f172a');
-      html.style.setProperty('--text-muted', '#475569');
-      html.style.setProperty('--text-dim', '#94a3b8');
-      html.style.setProperty('--border-subtle', 'rgba(0,0,0,0.08)');
-      html.style.setProperty('--border-card', 'rgba(0,0,0,0.10)');
-    } else {
-      html.style.setProperty('--bg-base', '#0c1222');
-      html.style.setProperty('--bg-surface', '#151f32');
-      html.style.setProperty('--bg-surface-elevated', '#1e2c45');
-      html.style.setProperty('--bg-surface-hover', '#263857');
-      html.style.setProperty('--text-main', '#f8fafc');
-      html.style.setProperty('--text-muted', '#94a3b8');
-      html.style.setProperty('--text-dim', '#64748b');
-      html.style.setProperty('--border-subtle', 'rgba(255,255,255,0.07)');
-      html.style.setProperty('--border-card', 'rgba(255,255,255,0.08)');
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.setAttribute('content', theme === 'dark' ? '#070b1a' : '#eef1fb');
+    if (window.Chart) {
+      Chart.defaults.color = theme === 'dark' ? '#a5b0c6' : '#4b5675';
+      Chart.defaults.borderColor = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)';
+      Object.values(Chart.instances || {}).forEach(function (c) { c.update(); });
     }
   }
 
@@ -96,6 +81,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Alt+A → Go to Academic
     if (e.altKey && e.key === 'a') {
       window.location.href = '/academic/';
+    }
+    // Alt+L → Go to Library
+    if (e.altKey && e.key === 'l') {
+      window.location.href = '/library/';
     }
   });
 
@@ -151,7 +140,6 @@ function showToast(message, type = 'success') {
   if (!container) {
     container = document.createElement('div');
     container.id = 'toastContainer';
-    container.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;';
     document.body.appendChild(container);
   }
 
@@ -163,15 +151,22 @@ function showToast(message, type = 'success') {
   };
 
   const toast = document.createElement('div');
-  toast.className = 'toast show align-items-center border-0';
-  toast.style.cssText = 'background: var(--bg-surface-elevated); color: var(--text-main); border: 1px solid var(--border-card) !important; border-radius: 12px; min-width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
+  toast.className = 'lifeos-toast';
+  toast.setAttribute('role', 'status');
   toast.innerHTML = `
     <div class="d-flex align-items-center gap-2 p-3">
       <i class="bi ${iconMap[type] || iconMap.info} fs-5"></i>
-      <span class="flex-grow-1 small fw-medium">${message}</span>
-      <button type="button" class="btn-close btn-close-white btn-close-sm ms-auto" style="filter:invert(0.5);" onclick="this.closest('.toast').remove()"></button>
+      <span class="flex-grow-1 small fw-medium"></span>
+      <button type="button" class="btn-close btn-close-sm ms-auto" aria-label="Đóng"></button>
     </div>
   `;
+  toast.querySelector('span').textContent = message;
+
+  const dismiss = () => {
+    toast.classList.add('hide');
+    setTimeout(() => toast.remove(), 250);
+  };
+  toast.querySelector('.btn-close').addEventListener('click', dismiss);
   container.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
+  setTimeout(dismiss, 4000);
 }

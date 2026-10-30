@@ -6,8 +6,7 @@ Variables: task, show_start (bool)
 {% with task as t %}
 <div class="kanban-card card mb-2 p-3 {% if t.status == 'done' %}opacity-75{% endif %}"
      data-task-id="{{ t.pk }}"
-     style="background: var(--bg-surface-elevated);
-            {% if t.status == 'in_progress' %}border-left: 3px solid var(--accent-primary) !important;{% endif %}
+     style="{% if t.status == 'in_progress' %}border-left: 3px solid var(--accent-primary) !important;{% endif %}
             {% if t.status == 'done' %}border-left: 3px solid var(--accent-emerald) !important;{% endif %}">
 
     <!-- Top row: quadrant badge + pomodoro counter -->
