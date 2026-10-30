@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Thư viện | Life OS{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">📚 Thư viện của tôi</h2>
+        <p class="text-muted mb-0 small">Sách, phim và game: theo dõi tiến độ, chấm điểm và đặt mục tiêu cho năm {{ year }}</p>
+    </div>
+    <button class="btn btn-primary btn-sm px-3" data-bs-toggle="collapse" data-bs-target="#quickAdd" aria-expanded="false">
+        <i class="bi bi-plus-lg me-1"></i> Thêm vào kệ
+    </button>
+</div>
+
+<!-- Quick add -->
+<div class="collapse mb-4" id="quickAdd">
+    <div class="card">
+        <div class="card-body">
+            <form method="post" class="row g-3 align-items-end">
+                {% csrf_token %}
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label">Loại</label>
+                    {{ add_form.media_type }}
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="form-label">Tên</label>
+                    {{ add_form.title }}
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label">Tác giả / Đạo diễn</label>
+                    {{ add_form.creator }}
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label">Trạng thái</label>
+                    {{ add_form.status }}
+                </div>
+                <div class="col-sm-6 col-lg-1">
+                    <label class="form-label" title="Số trang / phút / tập / giờ">Tổng</label>
+                    {{ add_form.progress_total }}
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <button type="submit" name="add_item" class="btn btn-primary w-100">Thêm</button>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Link ảnh bìa <span class="text-dim">(tuỳ chọn, có thể tải ảnh lên trong trang chi tiết)</span></label>
+                    {{ add_form.cover_url }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- KPI -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">Tổng trên kệ</span>
+                <div class="kpi-icon-wrap" style="color: #a78bfa;"><i class="bi bi-collection"></i></div>
+            </div>
+            <div class="kpi-value">{{ total_count }} <small class="fs-6 text-muted">mục</small></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">Đang theo dõi</span>
+                <div class="kpi-icon-wrap" style="color: #38bdf8;"><i class="bi bi-play-circle"></i></div>
+            </div>
+            <div class="kpi-value">{{ status_counts.in_progress|default:0 }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">Xong năm {{ year }}</span>
+                <div class="kpi-icon-wrap" style="color: #34d399;"><i class="bi bi-trophy"></i></div>
+            </div>
+            <div class="kpi-value">{{ done_year_count }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">Muốn thử</span>
+                <div class="kpi-icon-wrap" style="color: #fbbf24;"><i class="bi bi-bookmark-star"></i></div>
+            </div>
+            <div class="kpi-value">{{ status_counts.want|default:0 }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Đang theo dõi -->
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-hourglass-split me-2 text-primary"></i>Đang đọc / xem / chơi</div>
+            <div class="list-group list-group-flush">
+                {% for item in currently %}
+                <div class="list-group-item d-flex align-items-center gap-3">
+                    <a href="{% url 'library:item_detail' item.pk %}" class="current-thumb shelf-cover--{{ item.media_type }}">
+                        {% if item.cover_src %}<img src="{{ item.cover_src }}" alt="">{% else %}<i class="bi {{ item.type_icon }}"></i>{% endif %}
+                    </a>
+                    <div class="flex-grow-1 min-w-0">
+                        <a href="{% url 'library:item_detail' item.pk %}" class="fw-semibold text-white text-decoration-none d-block text-truncate">{{ item.title }}</a>
+                        <small class="text-muted">{{ item.get_media_type_display }}{% if item.creator %} &bull; {{ item.creator }}{% endif %}</small>
+                        {% if item.progress_total %}
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <div class="progress flex-grow-1" style="height: 6px;">
+                                <div class="progress-bar" style="width: {{ item.progress_percent }}%;"></div>
+                            </div>
+                            <small class="text-muted font-monospace" style="font-size: 0.72rem;">{{ item.progress_current }}/{{ item.progress_total }} {{ item.progress_unit }}</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <form method="post" action="{% url 'library:item_quick_update' item.pk %}" class="d-flex gap-1 flex-shrink-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <input type="hidden" name="step" value="{% if item.media_type == 'book' %}10{% elif item.media_type == 'movie' %}15{% else %}1{% endif %}">
+                        <button name="action" value="progress" class="btn btn-sm btn-outline-secondary" title="Cộng tiến độ">
+                            +{% if item.media_type == 'book' %}10{% elif item.media_type == 'movie' %}15{% else %}1{% endif %}
+                        </button>
+                        <button name="action" value="done" class="btn btn-sm btn-success" title="Đánh dấu đã xong"><i class="bi bi-check2"></i></button>
+                    </form>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted small py-5">
+                    Chưa có gì đang theo dõi. Chọn một mục trên kệ và bấm <strong>Bắt đầu</strong> ✨
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mục tiêu năm -->
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-bullseye me-2 text-danger"></i>Mục tiêu năm {{ year }}</div>
+            <div class="card-body d-flex flex-column">
+                {% for g in goals %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="fw-semibold text-white">{{ g.goal.get_media_type_display }}</span>
+                        <span class="text-muted font-monospace">{{ g.done }} / {{ g.goal.target }}</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar {% if g.percent >= 100 %}bg-success{% endif %}" style="width: {{ g.percent }}%;"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted small mb-3">Chưa đặt mục tiêu. Ví dụ: đọc 24 cuốn sách trong năm nay.</p>
+                {% endfor %}
+
+                <form method="post" class="row g-2 mt-auto">
+                    {% csrf_token %}
+                    <div class="col-6">{{ goal_form.media_type }}</div>
+                    <div class="col-3">{{ goal_form.target }}</div>
+                    <div class="col-3"><button name="set_goal" class="btn btn-outline-secondary w-100">Lưu</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bộ lọc -->
+<div class="shelf-toolbar mb-3">
+    <div class="shelf-tabs">
+        <a href="?status={{ selected_status }}&q={{ query|urlencode }}" class="shelf-tab {% if not selected_type %}active{% endif %}">Tất cả</a>
+        {% for value, label in media_types %}
+        <a href="?type={{ value }}&status={{ selected_status }}&q={{ query|urlencode }}" class="shelf-tab {% if selected_type == value %}active{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    <form method="get" class="d-flex gap-2">
+        <input type="hidden" name="type" value="{{ selected_type }}">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Mọi trạng thái</option>
+            {% for value, label in statuses %}
+            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <input type="search" name="q" value="{{ query }}" class="form-control form-control-sm" placeholder="Tìm tên, tác giả, thể loại...">
+    </form>
+</div>
+
+<!-- Kệ -->
+<div class="row g-3 mb-4">
+    {% for item in shelf %}
+    <div class="col-6 col-sm-4 col-md-3 col-xxl-2">
+        {% include "library/_item_card.html" %}
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="card text-center py-5">
+            <div class="fs-1 mb-2">📭</div>
+            <p class="text-muted mb-0">Không có mục nào khớp bộ lọc. Bấm <strong>Thêm vào kệ</strong> để bắt đầu.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Biểu đồ -->
+<div class="card">
+    <div class="card-header"><i class="bi bi-bar-chart-line me-2 text-info"></i>Hoàn thành theo tháng ({{ year }})</div>
+    <div class="card-body" style="height: 280px;">
+        <canvas id="libraryMonthlyChart"></canvas>
+    </div>
+</div>
+
+{{ chart_data|json_script:"library-chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('libraryMonthlyChart');
+    if (!ctx || !window.Chart) return;
+    const data = JSON.parse(document.getElementById('library-chart-data').textContent);
+    const series = [
+        { key: 'book',   label: 'Sách',     color: '#818cf8' },
+        { key: 'movie',  label: 'Phim lẻ',  color: '#f472b6' },
+        { key: 'series', label: 'Phim bộ',  color: '#38bdf8' },
+        { key: 'game',   label: 'Game',     color: '#34d399' },
+    ];
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'],
+            datasets: series.map(s => ({
+                label: s.label,
+                data: data[s.key],
+                backgroundColor: s.color,
+                borderRadius: 6,
+                maxBarThickness: 28,
+            })),
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } },
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
+            },
+        },
+    });
+});
+</script>
+{% endblock %}

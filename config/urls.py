@@ -13,6 +13,7 @@ urlpatterns = [
     path('finance/', include('finance.urls', namespace='finance')),
     path('productivity/', include('productivity.urls', namespace='productivity')),
     path('academic/', include('academic.urls', namespace='academic')),
+    path('library/', include('library.urls', namespace='library')),
 ]
 
 if settings.DEBUG:

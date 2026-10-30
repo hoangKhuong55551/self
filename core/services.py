@@ -82,6 +82,13 @@ def get_weekly_dashboard(user):
     ).first()
     current_gpa = current_semester.gpa if current_semester else 0.0
 
+    # --- LIBRARY ---
+    from library.models import MediaItem
+
+    library_current = MediaItem.objects.filter(
+        user=user, status=MediaItem.Status.IN_PROGRESS
+    )[:4]
+
     # --- GAMIFICATION ---
     profile = user.profile
 
@@ -109,6 +116,9 @@ def get_weekly_dashboard(user):
 
         # Academic
         'current_gpa': current_gpa,
+
+        # Library
+        'library_current': library_current,
 
         # Gamification
         'xp': profile.xp,

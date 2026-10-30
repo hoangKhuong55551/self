@@ -1,0 +1,54 @@
+{% comment %}
+Thẻ một mục trên kệ.
+Variables: item
+{% endcomment %}
+<div class="shelf-card">
+    <a href="{% url 'library:item_detail' item.pk %}" class="shelf-cover shelf-cover--{{ item.media_type }}">
+        {% if item.cover_src %}
+        <img src="{{ item.cover_src }}" alt="Bìa {{ item.title }}" loading="lazy">
+        {% else %}
+        <div class="shelf-cover-placeholder">
+            <i class="bi {{ item.type_icon }}"></i>
+            <span>{{ item.title|truncatechars:40 }}</span>
+        </div>
+        {% endif %}
+        <span class="shelf-status shelf-status--{{ item.status }}">{{ item.status_label }}</span>
+        {% if item.rating %}
+        <span class="shelf-rating">★ {{ item.rating }}</span>
+        {% endif %}
+    </a>
+
+    <div class="shelf-meta">
+        <div class="d-flex justify-content-between align-items-start gap-1">
+            <a href="{% url 'library:item_detail' item.pk %}" class="shelf-title" title="{{ item.title }}">{{ item.title }}</a>
+            <div class="dropdown">
+                <button class="btn btn-link btn-sm p-0 text-muted" data-bs-toggle="dropdown" aria-label="Thao tác nhanh">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    {% if item.status != 'in_progress' %}
+                    <li><form method="post" action="{% url 'library:item_quick_update' item.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dropdown-item" name="action" value="start"><i class="bi bi-play-circle me-2 text-primary"></i>Bắt đầu</button></form></li>
+                    {% endif %}
+                    {% if item.status != 'done' %}
+                    <li><form method="post" action="{% url 'library:item_quick_update' item.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dropdown-item" name="action" value="done"><i class="bi bi-check2-circle me-2 text-success"></i>Đánh dấu đã xong</button></form></li>
+                    {% endif %}
+                    {% if item.status != 'want' %}
+                    <li><form method="post" action="{% url 'library:item_quick_update' item.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dropdown-item" name="action" value="want"><i class="bi bi-bookmark me-2 text-info"></i>Chuyển về Muốn thử</button></form></li>
+                    {% endif %}
+                    {% if item.status != 'dropped' %}
+                    <li><form method="post" action="{% url 'library:item_quick_update' item.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dropdown-item" name="action" value="drop"><i class="bi bi-x-circle me-2 text-danger"></i>Bỏ dở</button></form></li>
+                    {% endif %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'library:item_detail' item.pk %}"><i class="bi bi-pencil-square me-2"></i>Chi tiết &amp; sửa</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="shelf-creator text-truncate">{{ item.creator|default:item.get_media_type_display }}</div>
+        {% if item.status == 'in_progress' and item.progress_total %}
+        <div class="progress mt-2" style="height: 5px;">
+            <div class="progress-bar" style="width: {{ item.progress_percent }}%;"></div>
+        </div>
+        <div class="shelf-progress-text">{{ item.progress_current }}/{{ item.progress_total }} {{ item.progress_unit }}</div>
+        {% endif %}
+    </div>
+</div>

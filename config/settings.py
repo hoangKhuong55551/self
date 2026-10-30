@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'finance.apps.FinanceConfig',
     'productivity.apps.ProductivityConfig',
     'academic.apps.AcademicConfig',
+    'library.apps.LibraryConfig',
 ]
 
 MIDDLEWARE = [

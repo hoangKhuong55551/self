@@ -257,6 +257,38 @@
         </div>
     </div>
 </div>
+
+<!-- 5. Thư viện: đang đọc / xem / chơi -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-collection-play me-2 text-primary"></i>Đang đọc / xem / chơi</span>
+        <a href="{% url 'library:shelf' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Thư viện &rarr;</a>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for item in library_current %}
+            <div class="col-sm-6 col-xl-3">
+                <a href="{% url 'library:item_detail' item.pk %}" class="d-flex align-items-center gap-3 text-decoration-none">
+                    <span class="current-thumb shelf-cover--{{ item.media_type }}">
+                        {% if item.cover_src %}<img src="{{ item.cover_src }}" alt="">{% else %}<i class="bi {{ item.type_icon }}"></i>{% endif %}
+                    </span>
+                    <span class="flex-grow-1 min-w-0">
+                        <span class="d-block fw-semibold text-white text-truncate small">{{ item.title }}</span>
+                        <span class="d-block text-muted" style="font-size: 0.75rem;">{{ item.status_label }}{% if item.progress_total %} &bull; {{ item.progress_percent }}%{% endif %}</span>
+                        {% if item.progress_total %}
+                        <span class="progress d-flex mt-1" style="height: 5px;"><span class="progress-bar" style="width: {{ item.progress_percent }}%;"></span></span>
+                        {% endif %}
+                    </span>
+                </a>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center text-muted small py-3">
+                Chưa có sách, phim hay game nào đang theo dõi. <a href="{% url 'library:shelf' %}" class="text-primary">Mở Thư viện</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
