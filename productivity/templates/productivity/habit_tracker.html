@@ -40,6 +40,7 @@
                             </div>
                             <form method="post" action="{% url 'productivity:toggle_habit' row.habit.pk %}">
                                 {% csrf_token %}
+                                <input type="hidden" name="via" value="form">
                                 <button type="submit"
                                         class="btn btn-sm {% if row.history|last %}btn-success{% else %}btn-outline-secondary{% endif %} py-1 px-2"
                                         style="font-size: 0.78rem; min-width: 52px;">

@@ -176,9 +176,17 @@ def toggle_habit_today(request, pk):
     # Thưởng 10 XP khi check-in thành công
     if log.completed:
         request.user.profile.add_xp(10)
-        messages.success(request, f"🔥 +10 XP! Đã check-in: {habit.name}")
-    
-    return redirect('productivity:habit_tracker')
+        if request.POST.get('via') == 'form':
+            messages.success(request, f"🔥 +10 XP! Đã check-in: {habit.name}")
+
+    # Form trên trang Thói quen thì redirect; fetch() từ Dashboard nhận JSON
+    if request.POST.get('via') == 'form':
+        return redirect('productivity:habit_tracker')
+    return JsonResponse({
+        'success': True,
+        'completed': log.completed,
+        'streak': habit.current_streak,
+    })
 
 # --- POMODORO TIMER ---
 @login_required

@@ -38,7 +38,7 @@ class ProductivityModuleTest(TestCase):
 
     def test_toggle_habit_and_streak(self):
         habit = Habit.objects.create(user=self.user, name='Đọc sách', target_per_day=1)
-        response = self.client.post(reverse('productivity:toggle_habit_today', args=[habit.pk]))
+        response = self.client.post(reverse('productivity:toggle_habit', args=[habit.pk]))
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data['completed'])
