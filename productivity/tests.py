@@ -57,3 +57,33 @@ class ProductivityModuleTest(TestCase):
         self.user.profile.refresh_from_db()
         self.assertEqual(self.user.profile.xp, initial_xp + 15)
         self.assertEqual(PomodoroSession.objects.count(), 1)
+
+
+class HabitHeatmapTest(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        self.user = User.objects.create_user(username='heat', password='password123')
+        self.client = Client()
+        self.client.login(username='heat', password='password123')
+        self.today = timezone.now().date()
+        h1 = Habit.objects.create(user=self.user, name='A')
+        h2 = Habit.objects.create(user=self.user, name='B')
+        # Hôm qua và hôm kia làm cả hai, hôm nay chưa check-in, cách 5 ngày làm một
+        for offset in (1, 2):
+            for h in (h1, h2):
+                HabitLog.objects.create(habit=h, date=self.today - timedelta(days=offset), completed=True)
+        HabitLog.objects.create(habit=h1, date=self.today - timedelta(days=5), completed=True)
+
+    def test_year_heatmap_stats(self):
+        heatmap = self.client.get(reverse('productivity:habit_tracker')).context['year_heatmap']
+        self.assertEqual(heatmap['total'], 5)
+        self.assertEqual(heatmap['active_days'], 3)
+        self.assertEqual(heatmap['current_streak'], 2)
+        self.assertEqual(heatmap['best_streak'], 2)
+        self.assertEqual(len(heatmap['columns']), 53)
+        levels = {c['date']: c['level'] for col in heatmap['columns'] for c in col if c}
+        from datetime import timedelta
+        self.assertEqual(levels[self.today - timedelta(days=1)], 4)
+        self.assertEqual(levels[self.today - timedelta(days=5)], 2)
+        self.assertEqual(levels[self.today], 0)

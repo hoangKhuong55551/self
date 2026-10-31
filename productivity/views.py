@@ -3,9 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
+from django.db.models import Count
 from django.views.decorators.http import require_POST
 from datetime import timedelta
 import json
+import math
 
 from .models import Goal, Task, Habit, HabitLog, PomodoroSession
 from .forms import GoalForm, TaskForm, HabitForm
@@ -147,11 +149,75 @@ def habit_tracker(request):
     context = {
         'habits': habits,
         'habit_matrix': habit_matrix,
+        'year_heatmap': _build_year_heatmap(request.user, habits.count(), today),
         'days_range': days_range,
         'form': form,
         'today': today,
     }
     return render(request, 'productivity/habit_tracker.html', context)
+
+
+def _build_year_heatmap(user, habit_count, today, weeks=53):
+    """
+    Lưới heatmap kiểu GitHub cho tất cả thói quen trong ~1 năm.
+    Mỗi ô = 1 ngày, level 0-4 theo tỉ lệ thói quen hoàn thành trong ngày.
+    """
+    if not habit_count:
+        return None
+
+    # Bắt đầu từ thứ Hai của tuần cách đây `weeks - 1` tuần
+    start = today - timedelta(days=today.weekday() + 7 * (weeks - 1))
+    done_by_day = dict(
+        HabitLog.objects.filter(habit__user=user, completed=True, date__gte=start, date__lte=today)
+        .values_list('date')
+        .annotate(n=Count('id'))
+        .values_list('date', 'n')
+    )
+
+    columns, month_labels = [], []
+    last_month = None
+    for w in range(weeks):
+        week_start = start + timedelta(weeks=w)
+        cells = []
+        for d in range(7):
+            day = week_start + timedelta(days=d)
+            if day > today:
+                cells.append(None)
+                continue
+            done = done_by_day.get(day, 0)
+            level = min(4, math.ceil(done / habit_count * 4))
+            cells.append({'date': day, 'done': done, 'level': level})
+        columns.append(cells)
+        month_labels.append(f'T{week_start.month}' if week_start.month != last_month else '')
+        last_month = week_start.month
+
+    # Tháng dở dang ở cột đầu: bỏ nhãn để không chồng lên nhãn tháng kế tiếp
+    if any(month_labels[1:3]):
+        month_labels[0] = ''
+
+    # Chuỗi ngày liên tiếp có ít nhất 1 thói quen hoàn thành
+    best = run = 0
+    day = start
+    while day <= today:
+        run = run + 1 if done_by_day.get(day) else 0
+        best = max(best, run)
+        day += timedelta(days=1)
+
+    # Hôm nay chưa check-in thì vẫn tính chuỗi tới hôm qua
+    current = 0
+    day = today if done_by_day.get(today) else today - timedelta(days=1)
+    while done_by_day.get(day):
+        current += 1
+        day -= timedelta(days=1)
+
+    return {
+        'columns': columns,
+        'month_labels': month_labels,
+        'total': sum(done_by_day.values()),
+        'active_days': len(done_by_day),
+        'best_streak': best,
+        'current_streak': current,
+    }
 
 
 @login_required
@@ -173,11 +239,9 @@ def toggle_habit_today(request, pk):
     else:
         log.save()
 
-    # Thưởng 10 XP khi check-in thành công
-    if log.completed:
-        request.user.profile.add_xp(10)
-        if request.POST.get('via') == 'form':
-            messages.success(request, f"🔥 +10 XP! Đã check-in: {habit.name}")
+    # XP được cộng trong signal của HabitLog (mỗi ngày một lần)
+    if log.completed and request.POST.get('via') == 'form':
+        messages.success(request, f"🔥 Đã check-in: {habit.name}")
 
     # Form trên trang Thói quen thì redirect; fetch() từ Dashboard nhận JSON
     if request.POST.get('via') == 'form':
@@ -225,7 +289,9 @@ def save_pomodoro_session(request):
     )
 
     # Thưởng 15 XP khi hoàn thành 1 pomodoro
-    request.user.profile.add_xp(15)
+    request.user.profile.award_xp_once(
+        f'pomodoro:{session.pk}', 15, f'Pomodoro: {task.title}'
+    )
 
     return JsonResponse({
         'success': True,

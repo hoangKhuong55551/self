@@ -57,6 +57,52 @@
             </div>
         </div>
 
+        {% if year_heatmap %}
+        <!-- Year heatmap (all habits) -->
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span><i class="bi bi-grid-3x3-gap-fill me-2 text-success"></i>Bản đồ nhiệt 12 tháng</span>
+                <span class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-success-subtle text-success">{{ year_heatmap.total }} lượt check-in</span>
+                    <span class="badge bg-primary-subtle text-primary">{{ year_heatmap.active_days }} ngày hoạt động</span>
+                    <span class="badge bg-warning-subtle text-warning">🔥 {{ year_heatmap.current_streak }} ngày liên tiếp · kỷ lục {{ year_heatmap.best_streak }}</span>
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="heatmap-scroll">
+                    <div class="heatmap">
+                        <div class="heatmap-days">
+                            <span></span><span>T2</span><span></span><span>T4</span><span></span><span>T6</span><span></span>
+                        </div>
+                        <div class="heatmap-body">
+                            <div class="heatmap-months">
+                                {% for label in year_heatmap.month_labels %}<span>{{ label }}</span>{% endfor %}
+                            </div>
+                            <div class="heatmap-grid">
+                                {% for column in year_heatmap.columns %}
+                                <div class="heatmap-col">
+                                    {% for cell in column %}
+                                    {% if cell %}
+                                    <span class="heatmap-cell lvl-{{ cell.level }}" title="{{ cell.date|date:'d/m/Y' }}: {{ cell.done }} thói quen"></span>
+                                    {% else %}
+                                    <span class="heatmap-cell is-future"></span>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="heatmap-legend">
+                    Ít
+                    <span class="heatmap-cell lvl-0"></span><span class="heatmap-cell lvl-1"></span><span class="heatmap-cell lvl-2"></span><span class="heatmap-cell lvl-3"></span><span class="heatmap-cell lvl-4"></span>
+                    Nhiều
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- 30-day heatmap grid -->
         <div class="card p-4">
             <h5 class="fw-bold text-white mb-3"><i class="bi bi-calendar-week me-2 text-primary"></i>Nhật ký 30 ngày</h5>
@@ -89,7 +135,7 @@
                                      title="Đã xong"></div>
                                 {% else %}
                                 <div style="width: 15px; height: 15px;
-                                            background-color: rgba(255,255,255,0.06);
+                                            background-color: var(--bg-inset); border: 1px solid var(--border-subtle);
                                             border-radius: 3px; margin: auto;"
                                      title="Chưa làm"></div>
                                 {% endif %}
@@ -113,7 +159,7 @@
             <!-- Legend -->
             <div class="d-flex align-items-center gap-3 mt-3" style="font-size: 0.78rem; color: var(--text-muted);">
                 <div class="d-flex align-items-center gap-1">
-                    <div style="width:12px;height:12px;background:rgba(255,255,255,0.06);border-radius:2px;"></div>
+                    <div style="width:12px;height:12px;background:var(--bg-inset);border:1px solid var(--border-subtle);border-radius:2px;"></div>
                     Chưa làm
                 </div>
                 <div class="d-flex align-items-center gap-1">
