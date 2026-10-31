@@ -67,6 +67,7 @@
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="add_semester" value="1">
+                {% if sem_form.errors %}<div class="alert alert-danger small py-2">{% for field, errs in sem_form.errors.items %}{% for e in errs %}<div>{{ e }}</div>{% endfor %}{% endfor %}</div>{% endif %}
                 <div class="mb-3">
                     <label class="form-label">Tên học kỳ</label>
                     {{ sem_form.name }}
@@ -95,6 +96,7 @@
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="add_course" value="1">
+                {% if course_form.errors %}<div class="alert alert-danger small py-2">{% for field, errs in course_form.errors.items %}{% for e in errs %}<div>{{ e }}</div>{% endfor %}{% endfor %}</div>{% endif %}
                 <div class="mb-3">
                     <label class="form-label">Thuộc học kỳ</label>
                     {{ course_form.semester }}

@@ -2,6 +2,7 @@
 Django settings for Life OS project.
 """
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -126,6 +127,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Băm mật khẩu nhanh khi chạy test (không dùng cho môi trường thật)
+if 'test' in sys.argv[1:2]:
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 # Bảo mật khi chạy production (DEBUG=False)
 if not DEBUG:

@@ -45,10 +45,13 @@ def academic_dashboard(request):
 @login_required
 def gpa_tracker(request):
     semesters = Semester.objects.filter(user=request.user).prefetch_related('courses')
+    sem_form = SemesterForm(user=request.user)
+    course_form = CourseForm(user=request.user)
 
     if request.method == 'POST':
+        # Form không hợp lệ được giữ lại để hiển thị lỗi
         if 'add_semester' in request.POST:
-            form = SemesterForm(request.POST)
+            form = sem_form = SemesterForm(request.POST, user=request.user)
             if form.is_valid():
                 sem = form.save(commit=False)
                 sem.user = request.user
@@ -58,14 +61,12 @@ def gpa_tracker(request):
                 messages.success(request, f"Đã thêm học kỳ: {sem.name}")
                 return redirect('academic:gpa_tracker')
         elif 'add_course' in request.POST:
-            cform = CourseForm(request.POST, user=request.user)
+            cform = course_form = CourseForm(request.POST, user=request.user)
             if cform.is_valid():
                 course = cform.save()
                 messages.success(request, f"Đã thêm môn học: {course.name}")
                 return redirect('academic:gpa_tracker')
-
-    sem_form = SemesterForm()
-    course_form = CourseForm(user=request.user)
+        messages.error(request, "Vui lòng kiểm tra lại thông tin đã nhập.")
 
     return render(request, 'academic/gpa_tracker.html', {
         'semesters': semesters,
@@ -101,9 +102,10 @@ def gpa_simulator(request):
 
             # Target = (current_weighted + required_gpa * remaining_credits) / total_future_credits
             # => required_gpa = (Target * total_future_credits - current_weighted) / remaining_credits
-            if remaining_credits > 0:
+            if remaining_credits > 0 and 0 < target_gpa <= 4.0:
                 required = (target_gpa * total_future_credits - current_weighted) / remaining_credits
-                required_gpa = round(required, 2)
+                # Âm nghĩa là đã chắc chắn đạt mục tiêu dù các môn còn lại điểm 0
+                required_gpa = max(round(required, 2), 0)
                 if required_gpa > 4.0:
                     possible = False
         except (ValueError, TypeError):
@@ -128,7 +130,7 @@ def note_list(request):
     notes = Note.objects.filter(user=request.user).prefetch_related('tags')
     if query:
         notes = notes.filter(Q(title__icontains=query) | Q(content__icontains=query))
-    if tag_id:
+    if tag_id and tag_id.isdigit():
         notes = notes.filter(tags__id=tag_id)
 
     tags = Tag.objects.filter(user=request.user)

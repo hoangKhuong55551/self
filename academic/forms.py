@@ -12,6 +12,20 @@ class SemesterForm(forms.ModelForm):
             'is_current': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        # Ràng buộc unique (user, year, term) không được form tự kiểm vì 'user' không nằm trong fields
+        cleaned = super().clean()
+        exists = self.user and Semester.objects.filter(
+            user=self.user, year=cleaned.get('year'), term=cleaned.get('term')
+        ).exclude(pk=self.instance.pk).exists()
+        if exists:
+            raise forms.ValidationError("Bạn đã có học kỳ này trong năm đã chọn.")
+        return cleaned
+
 
 class CourseForm(forms.ModelForm):
     class Meta:
