@@ -107,3 +107,52 @@ class LibraryModuleTest(TestCase):
 
     def test_xp_rewards_defined_for_all_types(self):
         self.assertEqual(set(XP_REWARDS), set(MediaItem.MediaType.values))
+
+    def test_done_toggle_does_not_farm_xp(self):
+        for status in ['done', 'want', 'done', 'dropped', 'done']:
+            self.book.status = status
+            self.book.save()
+        total = sum(self.user.xp_events.values_list('amount', flat=True))
+        self.assertEqual(total, XP_REWARDS['book'])
+
+
+class BookLookupTest(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        User.objects.create_user(username='reader', password='password123')
+        self.client = Client()
+        self.client.login(username='reader', password='password123')
+
+    def _fake_urlopen(self, payload):
+        import io
+        import json
+        from unittest import mock
+
+        class FakeResponse(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        return mock.patch('library.services.urlopen', return_value=FakeResponse(json.dumps(payload).encode()))
+
+    def test_lookup_maps_open_library_fields(self):
+        payload = {'docs': [{
+            'title': 'The Alchemist', 'author_name': ['Paulo Coelho'],
+            'number_of_pages_median': 208, 'cover_i': 123, 'first_publish_year': 1988,
+            'subject': ['Fiction'],
+        }]}
+        with self._fake_urlopen(payload):
+            data = self.client.get(reverse('library:book_lookup'), {'q': 'alchemist'}).json()
+        book = data['results'][0]
+        self.assertEqual(book['creator'], 'Paulo Coelho')
+        self.assertEqual(book['pages'], 208)
+        self.assertEqual(book['cover_url'], 'https://covers.openlibrary.org/b/id/123-L.jpg')
+
+    def test_lookup_network_error_returns_empty(self):
+        from unittest import mock
+        with mock.patch('library.services.urlopen', side_effect=OSError('offline')):
+            data = self.client.get(reverse('library:book_lookup'), {'q': 'anything'}).json()
+        self.assertEqual(data['results'], [])

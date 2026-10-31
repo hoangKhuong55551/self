@@ -46,8 +46,8 @@ class QuickAddForm(forms.ModelForm):
 
     class Meta:
         model = MediaItem
-        fields = ['media_type', 'title', 'creator', 'status', 'progress_total', 'cover_url']
-        widgets = MediaItemForm.Meta.widgets
+        fields = ['media_type', 'title', 'creator', 'genre', 'status', 'progress_total', 'cover_url']
+        widgets = {**MediaItemForm.Meta.widgets, 'genre': forms.HiddenInput()}
 
 
 class LibraryGoalForm(forms.ModelForm):

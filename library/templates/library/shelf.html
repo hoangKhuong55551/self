@@ -18,8 +18,19 @@
 <div class="collapse mb-4" id="quickAdd">
     <div class="card">
         <div class="card-body">
-            <form method="post" class="row g-3 align-items-end">
+            <!-- Tra cứu sách từ Open Library -->
+            <div class="book-lookup mb-3">
+                <label class="form-label" for="bookLookupInput"><i class="bi bi-magic me-1 text-primary"></i>Tự điền thông tin sách</label>
+                <div class="position-relative">
+                    <input type="search" id="bookLookupInput" class="form-control" placeholder="Gõ tên sách hoặc ISBN, VD: Nhà Giả Kim, Atomic Habits..." autocomplete="off" data-url="{% url 'library:book_lookup' %}">
+                    <div class="book-lookup-results" id="bookLookupResults" hidden></div>
+                </div>
+                <div class="form-text text-dim small mt-1">Dữ liệu từ Open Library. Chọn một kết quả để điền tên, tác giả, số trang và ảnh bìa.</div>
+            </div>
+
+            <form method="post" class="row g-3 align-items-end" id="quickAddForm">
                 {% csrf_token %}
+                {{ add_form.genre }}
                 <div class="col-sm-6 col-lg-2">
                     <label class="form-label">Loại</label>
                     {{ add_form.media_type }}
@@ -192,9 +203,12 @@
     </div>
     {% empty %}
     <div class="col-12">
-        <div class="card text-center py-5">
-            <div class="fs-1 mb-2">📭</div>
-            <p class="text-muted mb-0">Không có mục nào khớp bộ lọc. Bấm <strong>Thêm vào kệ</strong> để bắt đầu.</p>
+        <div class="card">
+            {% if selected_type or selected_status or query %}
+            {% include "partials/empty_state.html" with icon="bi-funnel" title="Không có mục nào khớp bộ lọc" text="Thử chọn loại hoặc trạng thái khác." %}
+            {% else %}
+            {% include "partials/empty_state.html" with icon="bi-collection-play" title="Kệ của bạn đang trống" text="Bấm “Thêm vào kệ” ở trên, gõ tên sách để tự điền thông tin từ Open Library." %}
+            {% endif %}
         </div>
     </div>
     {% endfor %}
@@ -203,7 +217,7 @@
 <!-- Biểu đồ -->
 <div class="card">
     <div class="card-header"><i class="bi bi-bar-chart-line me-2 text-info"></i>Hoàn thành theo tháng ({{ year }})</div>
-    <div class="card-body" style="height: 280px;">
+    <div class="card-body chart-box" style="height: 280px;">
         <canvas id="libraryMonthlyChart"></canvas>
     </div>
 </div>
@@ -212,6 +226,97 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+// Tra cứu Open Library và điền vào form thêm nhanh
+(function () {
+    const input = document.getElementById('bookLookupInput');
+    const box = document.getElementById('bookLookupResults');
+    const form = document.getElementById('quickAddForm');
+    if (!input || !form) return;
+    let timer = null, seq = 0;
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        const q = input.value.trim();
+        if (q.length < 2) { box.hidden = true; return; }
+        timer = setTimeout(() => lookup(q), 350);
+    });
+
+    document.addEventListener('click', e => {
+        if (!box.contains(e.target) && e.target !== input) box.hidden = true;
+    });
+
+    function message(text) {
+        const div = document.createElement('div');
+        div.className = 'book-lookup-empty';
+        div.textContent = text;
+        box.replaceChildren(div);
+    }
+
+    function lookup(q) {
+        const mySeq = ++seq;
+        box.hidden = false;
+        message('Đang tìm...');
+        fetch(input.dataset.url + '?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                if (mySeq !== seq) return;
+                if (!data.results.length) {
+                    message('Không tìm thấy, hoặc không kết nối được Open Library.');
+                    return;
+                }
+                box.replaceChildren(...data.results.map(renderBook));
+            })
+            .catch(() => message('Lỗi kết nối.'));
+    }
+
+    function renderBook(book) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'book-lookup-item';
+
+        const thumb = document.createElement('span');
+        thumb.className = 'book-lookup-cover current-thumb shelf-cover--book';
+        if (book.cover_url) {
+            const img = document.createElement('img');
+            img.src = book.cover_url.replace('-L.jpg', '-S.jpg');
+            img.alt = '';
+            thumb.appendChild(img);
+        } else {
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-book';
+            thumb.appendChild(icon);
+        }
+
+        const text = document.createElement('span');
+        text.className = 'min-w-0';
+        const title = document.createElement('span');
+        title.className = 'd-block fw-semibold text-truncate';
+        title.textContent = book.title;
+        const meta = document.createElement('span');
+        meta.className = 'd-block small text-muted text-truncate';
+        meta.textContent = [book.creator, book.year, book.pages ? book.pages + ' trang' : ''].filter(Boolean).join(' • ');
+        text.append(title, meta);
+
+        btn.append(thumb, text);
+        btn.addEventListener('click', () => fill(book));
+        return btn;
+    }
+
+    function fill(book) {
+        form.elements['media_type'].value = 'book';
+        form.elements['title'].value = book.title;
+        form.elements['creator'].value = book.creator;
+        form.elements['genre'].value = book.genre;
+        form.elements['progress_total'].value = book.pages || '';
+        form.elements['cover_url'].value = book.cover_url;
+        box.hidden = true;
+        input.value = '';
+        form.elements['title'].focus();
+        if (window.showToast) showToast('Đã điền thông tin: ' + book.title, 'success');
+    }
+})();
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('libraryMonthlyChart');

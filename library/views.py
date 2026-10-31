@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
 from django.db.models import Count, Q
 from django.db.models.functions import ExtractMonth
 from django.utils import timezone
@@ -9,6 +10,7 @@ from django.views.decorators.http import require_POST
 
 from .models import MediaItem, LibraryGoal
 from .forms import MediaItemForm, QuickAddForm, LibraryGoalForm
+from .services import search_books
 
 
 @login_required
@@ -158,3 +160,9 @@ def item_delete(request, pk):
     item.delete()
     messages.success(request, f"Đã xoá khỏi kệ: {title}")
     return redirect('library:shelf')
+
+
+@login_required
+def book_lookup(request):
+    """API JSON: tìm sách trên Open Library để tự điền form."""
+    return JsonResponse({'results': search_books(request.GET.get('q', ''))})
