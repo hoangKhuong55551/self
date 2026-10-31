@@ -1,0 +1,7 @@
+<li class="list-group-item d-flex align-items-center gap-3 py-2">
+    <span class="category-swatch" style="background: {{ c.color }};"><i class="bi bi-{{ c.icon }}"></i></span>
+    <span class="text-white fw-semibold flex-grow-1">{{ c.name }}</span>
+    <span class="row-actions">
+        <a href="{% url 'finance:category_edit' c.pk %}" class="btn btn-sm btn-outline-secondary" aria-label="Sửa {{ c.name }}"><i class="bi bi-pencil"></i></a>
+    </span>
+</li>

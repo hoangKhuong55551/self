@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Mục tiêu Tiết kiệm | Life OS{% endblock %}
+
+{% block content %}
+{% include "finance/partials/nav.html" %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-end mb-3">
+            <div>
+                <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">Mục tiêu Tiết kiệm</h3>
+                <p class="text-muted small mb-0">Đã để dành <strong class="text-white">{{ total_saved|currency_vn }} đ</strong> / {{ total_target|currency_vn }} đ</p>
+            </div>
+        </div>
+        <div class="row g-3">
+            {% for g in goals %}
+            <div class="col-md-6">
+                <div class="card p-3 h-100 {% if g.is_completed %}border-success{% endif %}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="fw-bold mb-0 text-white">{{ g.name }}</h5>
+                        <span class="d-flex align-items-center gap-2">
+                            {% if g.is_completed %}<span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>Đã đạt</span>{% endif %}
+                            <a href="{% url 'finance:saving_goal_edit' g.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa {{ g.name }}"><i class="bi bi-pencil"></i></a>
+                        </span>
+                    </div>
+                    <div class="fw-bold fs-5 text-white">{{ g.current_amount|currency_vn }} <span class="text-muted fs-6">/ {{ g.target_amount|currency_vn }} đ</span></div>
+                    <div class="progress my-2" style="height: 8px;" role="progressbar" aria-label="{{ g.name }} đạt {{ g.progress_percent }}%">
+                        <div class="progress-bar {% if g.is_completed %}bg-success{% else %}bg-primary{% endif %}" style="width: {{ g.progress_percent }}%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mb-3">
+                        <span>{{ g.progress_percent }}%</span>
+                        {% if g.deadline %}<span><i class="bi bi-calendar-event me-1"></i>{{ g.deadline|date:"d/m/Y" }}</span>{% endif %}
+                    </div>
+                    {% if g.monthly_needed %}
+                    <p class="small text-muted mb-2"><i class="bi bi-lightbulb me-1 text-warning"></i>Cần để dành <strong class="text-white">{{ g.monthly_needed|currency_vn }} đ/tháng</strong> để kịp hạn.</p>
+                    {% endif %}
+                    {% with items=g.wishlist_items.all %}
+                    {% if items %}
+                    <p class="small text-muted mb-2"><i class="bi bi-bag-heart me-1"></i>Dành cho: {% for w in items %}{{ w.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                    {% endif %}
+                    {% endwith %}
+                    <form method="post" action="{% url 'finance:saving_goal_adjust' g.pk %}" class="mt-auto d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="number" name="amount" class="form-control form-control-sm" min="1" step="1000" placeholder="Số tiền" required aria-label="Số tiền">
+                        <button name="action" value="deposit" class="btn btn-sm btn-success text-nowrap"><i class="bi bi-plus-lg"></i> Nạp</button>
+                        <button name="action" value="withdraw" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-dash-lg"></i> Rút</button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">{% include "partials/empty_state.html" with icon="bi-piggy-bank" title="Chưa có mục tiêu tiết kiệm" text="Đặt mục tiêu như quỹ khẩn cấp hay laptop mới, rồi nạp dần mỗi tháng." %}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-piggy-bank me-2 text-success"></i>Mục tiêu mới</h5>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100 py-2">Tạo mục tiêu</button>
+            </form>
+            <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Gắn quỹ cho một món trong Wishlist để theo dõi khả năng mua; khi mua, tiền sẽ được rút từ quỹ.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

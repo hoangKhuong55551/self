@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Danh mục Thu Chi | Life OS{% endblock %}
+
+{% block content %}
+{% include "finance/partials/nav.html" %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <h3 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Danh mục Thu &amp; Chi</h3>
+
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-arrow-up-right me-2 text-danger"></i>Chi tiêu <span class="text-muted small">({{ expense_categories|length }})</span></div>
+            <ul class="list-group list-group-flush">
+                {% for c in expense_categories %}
+                {% include "finance/partials/category_row.html" %}
+                {% empty %}
+                <li class="list-group-item text-muted small py-4 text-center">Chưa có danh mục chi tiêu.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><i class="bi bi-arrow-down-left me-2 text-success"></i>Thu nhập <span class="text-muted small">({{ income_categories|length }})</span></div>
+            <ul class="list-group list-group-flush">
+                {% for c in income_categories %}
+                {% include "finance/partials/category_row.html" %}
+                {% empty %}
+                <li class="list-group-item text-muted small py-4 text-center">Chưa có danh mục thu nhập.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-plus-circle me-2 text-primary"></i>Thêm danh mục</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tên danh mục</label>
+                    {{ form.name }}
+                    {% for e in form.name.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Loại</label>
+                    {{ form.type }}
+                </div>
+                <div class="row mb-3">
+                    <div class="col-8">
+                        <label class="form-label">Icon <a href="https://icons.getbootstrap.com/" target="_blank" rel="noopener" class="text-muted small">(tra cứu)</a></label>
+                        {{ form.icon }}
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Màu</label>
+                        {{ form.color }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2">Lưu danh mục</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

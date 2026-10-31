@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Chuyển tiền giữa các ví | Life OS{% endblock %}
+
+{% block content %}
+{% include "finance/partials/nav.html" %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">Chuyển tiền giữa các ví</h3>
+        <p class="text-muted small mb-3">Rút ATM, nạp ví điện tử... không bị tính là thu hay chi.</p>
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr><th>Ngày</th><th>Từ ví</th><th></th><th>Đến ví</th><th>Ghi chú</th><th class="text-end">Số tiền</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transfers %}
+                        <tr>
+                            <td class="text-muted small">{{ t.date|date:"d/m/Y" }}</td>
+                            <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ t.from_wallet.name }}</span></td>
+                            <td class="text-muted"><i class="bi bi-arrow-right"></i></td>
+                            <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ t.to_wallet.name }}</span></td>
+                            <td class="text-white small">{{ t.note }}</td>
+                            <td class="text-end fw-bold text-info">{{ t.amount|currency_vn }} đ</td>
+                            <td class="text-end">
+                                <form method="post" action="{% url 'finance:transfer_delete' t.pk %}" class="row-actions" onsubmit="return confirm('Huỷ lệnh chuyển tiền này? Số dư hai ví sẽ được hoàn lại.')">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger" aria-label="Huỷ lệnh chuyển"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7">{% include "partials/empty_state.html" with icon="bi-arrow-left-right" title="Chưa có lệnh chuyển nào" text="Chuyển tiền giữa ví tiền mặt, ngân hàng và ví điện tử ở form bên phải." %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-arrow-left-right me-2 text-info"></i>Chuyển tiền</h5>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100 py-2">Xác nhận chuyển</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

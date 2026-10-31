@@ -3,17 +3,22 @@
 {% block title %}Hạn mức Ngân sách | Life OS{% endblock %}
 
 {% block content %}
+{% include "finance/partials/nav.html" %}
 <div class="row g-4">
     <div class="col-lg-8">
-        <h3 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Hạn mức Ngân sách Tháng {{ today|date:"m/Y" }}</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+            <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">Hạn mức Ngân sách Tháng {{ today|date:"m/Y" }}</h3>
+            <form method="post" action="{% url 'finance:budget_copy_last_month' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary"><i class="bi bi-copy me-1"></i>Chép từ tháng trước</button></form>
+        </div>
         <div class="row g-3">
             {% for b in budgets %}
             <div class="col-md-6">
                 <div class="card p-3 h-100">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="fw-bold mb-0 text-white">{{ b.category.name }}</h5>
-                        <span class="badge {% if b.is_over_budget %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-muted{% endif %}">
-                            {{ b.percent_used }}%
+                        <h5 class="fw-bold mb-0 text-white"><i class="bi bi-{{ b.category.icon }} me-2" style="color: {{ b.category.color }};"></i>{{ b.category.name }}</h5>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="badge {% if b.is_over_budget %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-muted{% endif %}">{{ b.percent_used }}%</span>
+                            <a href="{% url 'finance:budget_edit' b.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa ngân sách {{ b.category.name }}"><i class="bi bi-pencil"></i></a>
                         </span>
                     </div>
                     <div class="mb-2">
@@ -26,15 +31,15 @@
                     </div>
                     {% if b.is_over_budget %}
                     <small class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Vượt hạn mức chi tiêu!</small>
+                    {% elif b.projected_over %}
+                    <small class="text-warning fw-semibold"><i class="bi bi-graph-up-arrow me-1"></i> Theo đà này cuối tháng sẽ chi ~{{ b.projected|currency_vn }} đ (vượt hạn mức)</small>
                     {% else %}
-                    <small class="text-success"><i class="bi bi-check-circle me-1"></i> Còn lại: {{ b.remaining|floatformat:0 }} đ</small>
+                    <small class="text-success"><i class="bi bi-check-circle me-1"></i> Còn lại: {{ b.remaining|currency_vn }} đ{% if b.projected is not None %} · dự kiến cuối tháng {{ b.projected|currency_vn }} đ{% endif %}</small>
                     {% endif %}
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 text-center py-5 text-muted small">
-                Chưa có hạn mức nào được thiết lập trong tháng này.
-            </div>
+            <div class="col-12">{% include "partials/empty_state.html" with icon="bi-pie-chart" title="Chưa có hạn mức nào tháng này" text="Đặt hạn mức cho từng danh mục chi tiêu, hoặc chép từ tháng trước." %}</div>
             {% endfor %}
         </div>
     </div>
@@ -61,6 +66,7 @@
                         {{ form.year }}
                     </div>
                 </div>
+                {% if form.non_field_errors %}<div class="alert alert-danger small py-2">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
                 <button type="submit" class="btn btn-primary w-100 py-2">Lưu hạn mức</button>
             </form>
         </div>

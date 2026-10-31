@@ -18,6 +18,7 @@ USER_OWNED_MODELS = [
     ('finance.Wallet', 'user'),
     ('finance.Category', 'user'),
     ('finance.Transaction', 'user'),
+    ('finance.Transfer', 'user'),
     ('finance.Budget', 'user'),
     ('finance.Subscription', 'user'),
     ('finance.WishlistItem', 'user'),

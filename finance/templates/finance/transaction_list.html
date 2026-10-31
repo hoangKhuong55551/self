@@ -3,9 +3,38 @@
 {% block title %}Lịch sử Giao dịch | Life OS{% endblock %}
 
 {% block content %}
+{% include "finance/partials/nav.html" %}
 <div class="row g-4">
     <div class="col-lg-8">
-        <h3 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Lịch sử Giao dịch Thu &amp; Chi</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+            <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">Lịch sử Giao dịch</h3>
+            <a href="{% url 'finance:transaction_import' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-upload me-1"></i>Nhập CSV</a>
+        </div>
+
+        <!-- Bộ lọc -->
+        <form method="get" class="card p-3 mb-3">
+            <div class="row g-2">
+                <div class="col-md-4">{{ filter_form.q }}</div>
+                <div class="col-6 col-md-2">{{ filter_form.type }}</div>
+                <div class="col-6 col-md-3">{{ filter_form.wallet }}</div>
+                <div class="col-md-3">{{ filter_form.category }}</div>
+                <div class="col-6 col-md-3">{{ filter_form.date_from }}</div>
+                <div class="col-6 col-md-3">{{ filter_form.date_to }}</div>
+                <div class="col-6 col-md-2">{{ filter_form.amount_min }}</div>
+                <div class="col-6 col-md-2">{{ filter_form.amount_max }}</div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-funnel"></i> Lọc</button>
+                    {% if is_filtered %}<a href="{% url 'finance:transaction_list' %}" class="btn btn-sm btn-outline-secondary" aria-label="Xoá bộ lọc"><i class="bi bi-x-lg"></i></a>{% endif %}
+                </div>
+            </div>
+        </form>
+
+        <div class="d-flex gap-3 small mb-2 flex-wrap">
+            <span class="text-muted">{{ page_obj.paginator.count }} giao dịch{% if is_filtered %} khớp bộ lọc{% endif %}</span>
+            <span class="text-success">Thu +{{ filtered_income|currency_vn }} đ</span>
+            <span class="text-danger">Chi -{{ filtered_expense|currency_vn }} đ</span>
+        </div>
+
         <div class="card">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -16,64 +45,68 @@
                             <th>Danh mục</th>
                             <th>Nội dung</th>
                             <th class="text-end">Số tiền</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in transactions %}
                         <tr>
-                            <td class="text-muted small">{{ t.date|date:"d/m/Y" }}</td>
+                            <td class="text-muted small text-nowrap">{{ t.date|date:"d/m/Y" }}</td>
                             <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ t.wallet.name }}</span></td>
-                            <td>{{ t.category.name|default:"Chưa phân loại" }}</td>
+                            <td>{% if t.category %}<i class="bi bi-{{ t.category.icon }} me-1" style="color: {{ t.category.color }};"></i>{{ t.category.name }}{% else %}<span class="text-muted">Chưa phân loại</span>{% endif %}</td>
                             <td>
                                 <span class="text-white">{{ t.note }}</span>
                                 {% if t.source == 'subscription' %}<span class="badge bg-warning-subtle text-warning ms-1">Định kỳ</span>{% endif %}
                                 {% if t.source == 'wishlist' %}<span class="badge bg-info-subtle text-info ms-1">Wishlist</span>{% endif %}
                             </td>
-                            <td class="text-end fw-bold {% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
-                                {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|floatformat:0 }} đ
+                            <td class="text-end fw-bold text-nowrap {% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|currency_vn }} đ
                             </td>
+                            <td class="text-end"><a href="{% url 'finance:transaction_edit' t.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa giao dịch"><i class="bi bi-pencil"></i></a></td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-5 text-muted small">Chưa có giao dịch nào được ghi nhận.</td>
+                            <td colspan="6">
+                                {% if is_filtered %}
+                                {% include "partials/empty_state.html" with icon="bi-search" title="Không có giao dịch khớp bộ lọc" text="Thử nới rộng khoảng ngày hoặc bỏ bớt điều kiện." %}
+                                {% else %}
+                                {% include "partials/empty_state.html" with icon="bi-receipt" title="Chưa có giao dịch nào" text="Ghi khoản thu chi đầu tiên ở form bên phải, hoặc nhập sao kê CSV." %}
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+
+        {% if page_obj.has_other_pages %}
+        <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Phân trang">
+            {% if page_obj.has_previous %}
+            <a class="btn btn-sm btn-outline-secondary" href="?{% if filter_query %}{{ filter_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">&larr; Trước</a>
+            {% else %}<span></span>{% endif %}
+            <span class="small text-muted">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+            <a class="btn btn-sm btn-outline-secondary" href="?{% if filter_query %}{{ filter_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Sau &rarr;</a>
+            {% else %}<span></span>{% endif %}
+        </nav>
+        {% endif %}
     </div>
     <div class="col-lg-4">
         <div class="card p-4">
             <h5 class="fw-bold mb-3 text-white"><i class="bi bi-plus-circle me-2 text-primary"></i>Ghi nhận giao dịch</h5>
             <form method="post">
                 {% csrf_token %}
+                {% for field in form %}
                 <div class="mb-3">
-                    <label class="form-label">Loại giao dịch</label>
-                    {{ form.transaction_type }}
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Số tiền (VND)</label>
-                    {{ form.amount }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Ví thanh toán</label>
-                    {{ form.wallet }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Danh mục</label>
-                    {{ form.category }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Ngày giao dịch</label>
-                    {{ form.date }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Ghi chú</label>
-                    {{ form.note }}
-                </div>
+                {% endfor %}
                 <button type="submit" class="btn btn-primary w-100 py-2">Lưu giao dịch</button>
             </form>
+            <p class="small text-muted mt-3 mb-0">Thiếu danh mục? <a href="{% url 'finance:category_list' %}">Quản lý danh mục</a></p>
         </div>
     </div>
 </div>

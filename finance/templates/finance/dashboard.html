@@ -3,6 +3,7 @@
 {% block title %}Tài chính & Chi tiêu | Life OS{% endblock %}
 
 {% block content %}
+{% include "finance/partials/nav.html" %}
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
         <h2 class="fw-bold mb-1" style="letter-spacing: -0.02em;">💰 Quản lý Tài chính</h2>
@@ -56,7 +57,7 @@
                 </div>
             </div>
             <div class="kpi-value text-danger">-{{ month_expense|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
-            <div class="small text-muted">Dòng tiền chi tiêu</div>
+            <div class="small text-muted">{% if month_savings_rate is not None %}Giữ lại <strong class="{% if month_savings_rate >= 0 %}text-success{% else %}text-danger{% endif %}">{{ month_savings_rate }}%</strong> thu nhập tháng này{% else %}Dòng tiền chi tiêu{% endif %}</div>
         </div>
     </div>
 </div>
@@ -77,6 +78,56 @@
             {% for m in cashflow %}<tr><td>{{ m.label }}</td><td>{{ m.income|currency_vn }}</td><td>{{ m.expense|currency_vn }}</td><td>{{ m.net|currency_vn }}</td></tr>{% endfor %}
         </table>
         {{ cashflow|json_script:"cashflow-data" }}
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chi tiêu theo danh mục tháng này -->
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bar-chart-steps me-2 text-danger"></i>Chi tiêu theo danh mục ({{ current_month }})</span>
+                <a href="{% url 'finance:transaction_list' %}?type=expense" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Chi tiết &rarr;</a>
+            </div>
+            <div class="card-body">
+                {% for c in category_spending|slice:":7" %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-white"><i class="bi bi-{{ c.icon }} me-1" style="color: {{ c.color }};"></i>{{ c.name }}</span>
+                        <span class="text-muted"><strong class="text-white">{{ c.total|currency_vn }} đ</strong> · {{ c.percent }}%</span>
+                    </div>
+                    <div class="spend-bar" role="progressbar" aria-label="{{ c.name }} chiếm {{ c.percent }}% chi tiêu"><span style="width: {{ c.percent }}%; background: {{ c.color }};"></span></div>
+                </div>
+                {% empty %}
+                {% include "partials/empty_state.html" with icon="bi-bar-chart-steps" title="Chưa có khoản chi nào tháng này" text="Chi tiêu được gom theo danh mục để bạn thấy tiền đi đâu." %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mục tiêu tiết kiệm -->
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-piggy-bank me-2 text-success"></i>Mục tiêu tiết kiệm</span>
+                <a href="{% url 'finance:saving_goal_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Quản lý &rarr;</a>
+            </div>
+            <div class="card-body">
+                {% for g in saving_goals %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-white">{{ g.name }}</span>
+                        <span class="text-muted">{{ g.current_amount|currency_vn }} / {{ g.target_amount|currency_vn }} đ</span>
+                    </div>
+                    <div class="progress" style="height: 6px;" role="progressbar" aria-label="{{ g.name }} đạt {{ g.progress_percent }}%"><div class="progress-bar bg-success" style="width: {{ g.progress_percent }}%;"></div></div>
+                    {% if g.monthly_needed %}<small class="text-muted">Cần {{ g.monthly_needed|currency_vn }} đ/tháng để kịp {{ g.deadline|date:"m/Y" }}</small>{% endif %}
+                </div>
+                {% empty %}
+                {% url 'finance:saving_goal_list' as goals_url %}
+                {% include "partials/empty_state.html" with icon="bi-piggy-bank" title="Chưa có mục tiêu tiết kiệm" text="Đặt mục tiêu và nạp dần để theo dõi tiến độ." cta_url=goals_url cta_label="Tạo mục tiêu" %}
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
 
@@ -105,7 +156,7 @@
                         <tr>
                             <td class="text-muted small">{{ t.date|date:"d/m/Y" }}</td>
                             <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ t.wallet.name }}</span></td>
-                            <td>{{ t.category.name|default:"--" }}</td>
+                            <td>{% if t.category %}<i class="bi bi-{{ t.category.icon }} me-1" style="color: {{ t.category.color }};"></i>{{ t.category.name }}{% else %}--{% endif %}</td>
                             <td>
                                 {{ t.note }}
                                 {% if t.source == 'subscription' %}<span class="badge bg-warning-subtle text-warning ms-1">Định kỳ</span>{% endif %}
@@ -149,6 +200,8 @@
                     </div>
                     {% if b.is_over_budget %}
                     <small class="text-danger fw-semibold d-block mt-1"><i class="bi bi-exclamation-circle me-1"></i> Vượt hạn mức chi tiêu!</small>
+                    {% elif b.projected_over %}
+                    <small class="text-warning d-block mt-1"><i class="bi bi-graph-up-arrow me-1"></i> Dự kiến cuối tháng ~{{ b.projected|currency_vn }} đ, sẽ vượt hạn mức</small>
                     {% endif %}
                 </div>
                 {% empty %}

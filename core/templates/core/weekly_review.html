@@ -28,7 +28,7 @@
                 <div class="kpi-icon-wrap" style="color: #38bdf8;"><i class="bi bi-piggy-bank"></i></div>
             </div>
             <div class="kpi-value {% if savings < 0 %}text-danger{% endif %}">{{ savings|currency_signed_vn }} <small class="fs-6 text-muted">đ</small></div>
-            <div class="small text-muted">Thu {{ income|currency_vn }} · Chi {{ expense|currency_vn }}</div>
+            <div class="small text-muted">Thu {{ income|currency_vn }} · Chi {{ expense|currency_vn }}{% if savings_rate is not None %} · giữ lại {{ savings_rate }}%{% endif %}</div>
         </div>
     </div>
     <div class="col-6 col-xl-3">

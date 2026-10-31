@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Nhập sao kê CSV | Life OS{% endblock %}
+
+{% block content %}
+{% include "finance/partials/nav.html" %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-upload me-2 text-primary"></i>Nhập sao kê từ CSV</h5>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100 py-2">Nhập giao dịch</button>
+            </form>
+        </div>
+
+        {% if result %}
+        <div class="card p-4 mt-4">
+            <h6 class="fw-bold text-white mb-3">Kết quả</h6>
+            <div class="d-flex gap-4 mb-2">
+                <div><div class="fs-4 fw-bold text-success">{{ result.created }}</div><small class="text-muted">đã nhập</small></div>
+                <div><div class="fs-4 fw-bold text-white">{{ result.duplicates }}</div><small class="text-muted">trùng, bỏ qua</small></div>
+                <div><div class="fs-4 fw-bold {% if result.errors %}text-danger{% else %}text-white{% endif %}">{{ result.errors|length }}</div><small class="text-muted">lỗi</small></div>
+            </div>
+            {% if result.errors %}
+            <ul class="small text-muted mb-0 mt-2" style="max-height: 220px; overflow-y: auto;">
+                {% for line, reason in result.errors|slice:":50" %}<li>Dòng {{ line }}: {{ reason }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+            {% if result.created %}<a href="{% url 'finance:transaction_list' %}" class="btn btn-sm btn-outline-secondary mt-3">Xem giao dịch &rarr;</a>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card p-4">
+            <h6 class="fw-bold text-white mb-3"><i class="bi bi-info-circle me-2 text-info"></i>Định dạng hỗ trợ</h6>
+            <ul class="small text-muted">
+                <li>Dòng đầu là tên cột (có dấu, không dấu hoặc tiếng Anh). Phân cách bằng <code>,</code> <code>;</code> hoặc Tab.</li>
+                <li><strong class="text-white">Bắt buộc:</strong> cột <code>Ngày</code> và một trong các cách ghi số tiền:
+                    <ul>
+                        <li><code>Số tiền</code> có dấu: âm là chi, dương là thu; hoặc kèm cột <code>Loại</code> (Thu/Chi)</li>
+                        <li>Cặp cột <code>Ghi nợ</code> (chi) / <code>Ghi có</code> (thu) như sao kê ngân hàng</li>
+                    </ul>
+                </li>
+                <li><strong class="text-white">Tuỳ chọn:</strong> <code>Ghi chú</code> / <code>Nội dung</code> / <code>Diễn giải</code>, <code>Danh mục</code> (khớp theo tên danh mục của bạn).</li>
+                <li>Ngày: <code>2026-10-31</code>, <code>31/10/2026</code>, <code>31-10-2026</code>. Số tiền: <code>1.250.000</code>, <code>1,250,000.00</code>, <code>-50000</code>.</li>
+                <li>Dòng trùng với giao dịch đã có (cùng ví, ngày, loại, số tiền, ghi chú) sẽ được bỏ qua, nên nhập lại cùng file nhiều lần vẫn an toàn.</li>
+                <li>File xuất từ <a href="{% url 'core:export' %}">Xuất dữ liệu</a> của Life OS có thể nhập lại trực tiếp.</li>
+            </ul>
+            <p class="small text-muted mb-1">Ví dụ:</p>
+            <pre class="small mb-0 p-3 rounded" style="background: var(--bg-inset);">Ngày,Nội dung,Ghi nợ,Ghi có
+31/10/2026,Cà phê,45.000,
+30/10/2026,Lương tháng 10,,15.000.000</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}

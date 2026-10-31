@@ -210,6 +210,7 @@ def get_week_review(user, week_start):
     from productivity.models import Task, PomodoroSession, HabitLog, Habit
     from library.models import MediaItem
     from academic.models import Course, Note, CodeSnippet
+    from finance.services import savings_rate
     from .models import XPEvent, UserAchievement
     from .achievements import ACHIEVEMENTS_BY_CODE
 
@@ -273,6 +274,7 @@ def get_week_review(user, week_start):
         'income': income,
         'expense': expense,
         'savings': income - expense,
+        'savings_rate': savings_rate(income, expense),
         'top_expenses': top_expenses,
         'tasks_done': tasks_done,
         'focus_sessions': focus['sessions'] or 0,

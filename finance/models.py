@@ -14,6 +14,10 @@ class Wallet(models.Model):
         related_name='wallets'
     )
     name = models.CharField(max_length=100)
+    initial_balance = models.DecimalField(
+        max_digits=15, decimal_places=2, default=Decimal('0.00'),
+        help_text="Số dư lúc tạo ví, gốc để tính lại số dư"
+    )
     balance = models.DecimalField(
         max_digits=15, decimal_places=2, default=Decimal('0.00')
     )
@@ -34,17 +38,28 @@ class Wallet(models.Model):
     def __str__(self):
         return f"{self.name} ({self.balance:,.0f} {self.currency})"
 
+    def save(self, *args, **kwargs):
+        # Ví mới: số dư nhập vào chính là số dư ban đầu
+        if self._state.adding and not self.initial_balance:
+            self.initial_balance = self.balance
+        super().save(*args, **kwargs)
+
+    def compute_balance(self):
+        """Số dư = ban đầu + thu - chi + tiền chuyển đến - tiền chuyển đi."""
+        def total(qs):
+            return qs.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+        return (
+            self.initial_balance
+            + total(self.transactions.filter(transaction_type='income'))
+            - total(self.transactions.filter(transaction_type='expense'))
+            + total(self.transfers_in.all())
+            - total(self.transfers_out.all())
+        )
+
     def recalculate_balance(self):
-        """Tính lại số dư từ tất cả giao dịch (bảo toàn tính nhất quán)."""
-        income = self.transactions.filter(
-            transaction_type='income'
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-
-        expense = self.transactions.filter(
-            transaction_type='expense'
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-
-        self.balance = income - expense
+        """Tính lại số dư từ toàn bộ lịch sử (bảo toàn tính nhất quán)."""
+        self.balance = self.compute_balance()
         self.save(update_fields=['balance'])
 
 
@@ -144,6 +159,39 @@ class Transaction(models.Model):
     def __str__(self):
         sign = '+' if self.transaction_type == 'income' else '-'
         return f"{sign}{self.amount:,.0f} | {self.note[:30]}"
+
+
+class Transfer(models.Model):
+    """Chuyển tiền giữa hai ví của cùng user — không tính là thu hay chi."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='transfers'
+    )
+    from_wallet = models.ForeignKey(
+        Wallet,
+        on_delete=models.CASCADE,
+        related_name='transfers_out'
+    )
+    to_wallet = models.ForeignKey(
+        Wallet,
+        on_delete=models.CASCADE,
+        related_name='transfers_in'
+    )
+    amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))]
+    )
+    date = models.DateField(default=timezone.now)
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f"{self.from_wallet.name} → {self.to_wallet.name}: {self.amount:,.0f}"
 
 
 class Budget(models.Model):
@@ -313,6 +361,13 @@ class WishlistItem(models.Model):
         related_name='wishlist_items',
         help_text="Ví sẽ trừ tiền khi mua"
     )
+    saving_goal = models.ForeignKey(
+        'SavingGoal',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='wishlist_items',
+        help_text="Quỹ tiết kiệm dành cho món này; khi mua sẽ rút từ quỹ"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -324,13 +379,17 @@ class WishlistItem(models.Model):
         return f"{status} {self.name} ({self.price:,.0f})"
 
     def affordability(self):
-        total_balance = Wallet.objects.filter(
-            user=self.user, is_active=True
-        ).aggregate(total=Sum('balance'))['total'] or Decimal('0')
+        """% giá đã có: theo quỹ tiết kiệm gắn kèm, nếu không thì theo tổng số dư các ví."""
+        if self.saving_goal_id:
+            available = self.saving_goal.current_amount
+        else:
+            available = Wallet.objects.filter(
+                user=self.user, is_active=True
+            ).aggregate(total=Sum('balance'))['total'] or Decimal('0')
 
         if self.price == 0:
             return 100
-        return min(round((total_balance / self.price) * 100, 1), 100)
+        return max(min(round((available / self.price) * 100, 1), 100), 0)
 
 
 class SavingGoal(models.Model):
@@ -358,8 +417,28 @@ class SavingGoal(models.Model):
     is_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['is_completed', 'deadline', '-created_at']
+
     def __str__(self):
         return f"🎯 {self.name}: {self.progress_percent}%"
+
+    def adjust(self, delta):
+        """Nạp (delta > 0) hoặc rút (delta < 0) tiền khỏi quỹ, không để âm. Trả về True nếu vừa đạt mục tiêu."""
+        was_completed = self.is_completed
+        self.current_amount = max(self.current_amount + delta, Decimal('0'))
+        self.is_completed = self.current_amount >= self.target_amount
+        self.save(update_fields=['current_amount', 'is_completed'])
+        return self.is_completed and not was_completed
+
+    @property
+    def monthly_needed(self):
+        """Số tiền cần để dành mỗi tháng để kịp hạn (None nếu không có hạn hoặc đã đạt)."""
+        if not self.deadline or self.is_completed:
+            return None
+        today = timezone.now().date()
+        months_left = max((self.deadline.year - today.year) * 12 + self.deadline.month - today.month, 1)
+        return round(self.remaining / months_left, 0)
 
     @property
     def progress_percent(self):

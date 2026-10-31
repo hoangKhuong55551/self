@@ -3,27 +3,32 @@
 {% block title %}Quản lý Ví | Life OS{% endblock %}
 
 {% block content %}
+{% include "finance/partials/nav.html" %}
 <div class="row g-4">
     <div class="col-lg-8">
         <h3 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Ví tiền &amp; Tài khoản</h3>
         <div class="row g-3">
             {% for w in wallets %}
             <div class="col-md-6">
-                <div class="card p-3">
+                <div class="card p-3 {% if not w.is_active %}opacity-75{% endif %}">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0 text-white">{{ w.name }}</h5>
+                        <h5 class="fw-bold mb-0 text-white"><i class="bi bi-{{ w.icon }} me-2 text-muted"></i>{{ w.name }}</h5>
                         <span class="badge {% if w.is_active %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-muted{% endif %}">
                             {% if w.is_active %}Hoạt động{% else %}Đã khóa{% endif %}
                         </span>
                     </div>
-                    <div class="mt-3 mb-1 text-primary fw-bold fs-3">{{ w.balance|floatformat:0 }} <small class="fs-6 text-muted font-monospace">{{ w.currency }}</small></div>
-                    <small class="text-muted">Ngày tạo: {{ w.created_at|date:"d/m/Y" }}</small>
+                    <div class="mt-3 mb-1 text-primary fw-bold fs-3">{{ w.balance|currency_vn }} <small class="fs-6 text-muted font-monospace">{{ w.currency }}</small></div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Ban đầu: {{ w.initial_balance|currency_vn }} · Tạo {{ w.created_at|date:"d/m/Y" }}</small>
+                        <span class="row-actions">
+                            <form method="post" action="{% url 'finance:wallet_recalculate' w.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" title="Tính lại số dư từ lịch sử" aria-label="Tính lại số dư {{ w.name }}"><i class="bi bi-arrow-clockwise"></i></button></form>
+                            <a href="{% url 'finance:wallet_edit' w.pk %}" class="btn btn-sm btn-outline-secondary" aria-label="Sửa {{ w.name }}"><i class="bi bi-pencil"></i></a>
+                        </span>
+                    </div>
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 text-center py-5 text-muted small">
-                Bạn chưa có ví tiền nào. Hãy thêm ví mới ở bên phải!
-            </div>
+            <div class="col-12">{% include "partials/empty_state.html" with icon="bi-wallet2" title="Chưa có ví nào" text="Thêm ví tiền mặt, tài khoản ngân hàng hoặc ví điện tử ở bên phải." %}</div>
             {% endfor %}
         </div>
     </div>
@@ -35,6 +40,7 @@
                 <div class="mb-3">
                     <label class="form-label">Tên ví</label>
                     {{ form.name }}
+                    {% for e in form.name.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Số dư ban đầu</label>

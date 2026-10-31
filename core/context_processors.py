@@ -17,6 +17,7 @@ def notifications_context(request):
     from django.urls import reverse
     from django.utils import timezone
     from finance.models import Budget, Subscription
+    from finance.services import attach_budget_forecast
     from productivity.models import Goal, Task
 
     user = request.user
@@ -52,12 +53,23 @@ def notifications_context(request):
             'url': reverse('finance:subscription_list'),
         })
 
-    for budget in Budget.objects.filter(user=user, month=today.month, year=today.year).select_related('category'):
+    budgets = attach_budget_forecast(
+        Budget.objects.filter(user=user, month=today.month, year=today.year).select_related('category'), today
+    )
+    for budget in budgets:
         if budget.is_over_budget:
             items.append({
                 'icon': 'bi-cash-stack', 'tone': 'danger',
                 'title': f'Vượt ngân sách {budget.category.name}',
                 'subtitle': f'Đã dùng {budget.percent_used}%',
+                'url': reverse('finance:budget_list'),
+            })
+        elif budget.projected_over and today.day >= 7:
+            # Đầu tháng ít dữ liệu, dự báo dễ sai nên chỉ nhắc từ ngày 7
+            items.append({
+                'icon': 'bi-graph-up-arrow', 'tone': 'warning',
+                'title': f'Sắp vượt ngân sách {budget.category.name}',
+                'subtitle': f'Dự kiến {budget.projected:,.0f} / {budget.amount:,.0f} đ'.replace(',', '.'),
                 'url': reverse('finance:budget_list'),
             })
 

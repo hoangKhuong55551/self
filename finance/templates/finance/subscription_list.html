@@ -3,9 +3,13 @@
 {% block title %}Dịch vụ Định kỳ | Life OS{% endblock %}
 
 {% block content %}
+{% include "finance/partials/nav.html" %}
 <div class="row g-4">
     <div class="col-lg-8">
-        <h3 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Dịch vụ &amp; Hóa đơn Định kỳ</h3>
+        <div class="d-flex justify-content-between align-items-end mb-3 gap-2 flex-wrap">
+            <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">Dịch vụ &amp; Hóa đơn Định kỳ</h3>
+            <span class="small text-muted">Tổng ~<strong class="text-white">{{ monthly_total|currency_vn }} đ/tháng</strong></span>
+        </div>
         <div class="card">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -16,23 +20,31 @@
                             <th>Chu kỳ</th>
                             <th>Kỳ tiếp theo</th>
                             <th class="text-end">Chi phí</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for s in subscriptions %}
-                        <tr>
+                        <tr class="{% if not s.is_active %}opacity-50{% endif %}">
                             <td>
                                 <strong class="text-white">{{ s.name }}</strong>
+                                {% if not s.is_active %}<span class="badge bg-secondary-subtle text-muted ms-1">Tạm dừng</span>{% endif %}
                                 {% if s.url %}<a href="{{ s.url }}" target="_blank" class="ms-1 text-muted small"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
                             </td>
                             <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ s.wallet.name }}</span></td>
                             <td><span class="badge bg-secondary-subtle text-muted">{{ s.get_billing_cycle_display }}</span></td>
                             <td class="text-muted small">{{ s.next_billing_date|date:"d/m/Y" }}</td>
-                            <td class="text-end fw-bold text-danger">-{{ s.amount|floatformat:0 }} đ</td>
+                            <td class="text-end fw-bold text-danger text-nowrap">-{{ s.amount|currency_vn }} đ</td>
+                            <td class="text-end text-nowrap">
+                                <span class="row-actions">
+                                    <form method="post" action="{% url 'finance:subscription_toggle' s.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" title="{% if s.is_active %}Tạm dừng{% else %}Kích hoạt lại{% endif %}" aria-label="{% if s.is_active %}Tạm dừng{% else %}Kích hoạt lại{% endif %} {{ s.name }}"><i class="bi {% if s.is_active %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i></button></form>
+                                    <a href="{% url 'finance:subscription_edit' s.pk %}" class="btn btn-sm btn-outline-secondary" aria-label="Sửa {{ s.name }}"><i class="bi bi-pencil"></i></a>
+                                </span>
+                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-5 text-muted small">Chưa có gói dịch vụ nào.</td>
+                            <td colspan="6">{% include "partials/empty_state.html" with icon="bi-arrow-repeat" title="Chưa có dịch vụ định kỳ" text="Thêm Netflix, Spotify, tiền điện... để app tự trừ tiền và nhắc trước kỳ gia hạn." %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

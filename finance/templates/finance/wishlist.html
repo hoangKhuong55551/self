@@ -3,6 +3,7 @@
 {% block title %}Wishlist & Mục tiêu mua sắm | Life OS{% endblock %}
 
 {% block content %}
+{% include "finance/partials/nav.html" %}
 <div class="row g-4">
     <div class="col-lg-8">
         <h3 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Mục tiêu Mua sắm (Wishlist)</h3>
@@ -11,7 +12,7 @@
             <div class="col-md-6">
                 <div class="card p-3 h-100 {% if item.is_purchased %}opacity-75{% endif %}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="fw-bold mb-0 text-white">{{ item.name }}</h5>
+                        <h5 class="fw-bold mb-0 text-white">{{ item.name }}{% if not item.is_purchased %} <a href="{% url 'finance:wishlist_edit' item.pk %}" class="row-actions btn btn-sm btn-outline-secondary ms-1" aria-label="Sửa {{ item.name }}"><i class="bi bi-pencil"></i></a>{% endif %}</h5>
                         <span class="badge {% if item.is_purchased %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %}">
                             {% if item.is_purchased %}Đã mua{% else %}{{ item.get_priority_display }}{% endif %}
                         </span>
@@ -22,7 +23,7 @@
                     {% if not item.is_purchased %}
                     <div class="mt-auto">
                         <div class="d-flex justify-content-between small text-muted mb-1">
-                            <span>Khả năng chi trả:</span>
+                            <span>{% if item.saving_goal %}<i class="bi bi-piggy-bank me-1"></i>Quỹ {{ item.saving_goal.name }}:{% else %}Khả năng chi trả:{% endif %}</span>
                             <strong class="text-white">{{ item.affordability }}%</strong>
                         </div>
                         <div class="progress mb-3" style="height: 6px;">
@@ -69,6 +70,12 @@
                     <label class="form-label">Dự kiến chi từ ví</label>
                     {{ form.wallet }}
                 </div>
+                {% if form.fields.saving_goal.queryset.exists %}
+                <div class="mb-3">
+                    <label class="form-label">Quỹ tiết kiệm <span class="text-muted small">(tuỳ chọn)</span></label>
+                    {{ form.saving_goal }}
+                </div>
+                {% endif %}
                 <div class="mb-3">
                     <label class="form-label">Ngày mục tiêu</label>
                     {{ form.target_date }}

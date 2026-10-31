@@ -1,0 +1,15 @@
+{% with current=request.resolver_match.url_name %}
+<nav class="finance-subnav mb-4" aria-label="Điều hướng tài chính">
+    <div class="shelf-tabs">
+        <a href="{% url 'finance:dashboard' %}" class="shelf-tab {% if current == 'dashboard' %}active{% endif %}"><i class="bi bi-grid me-1"></i>Tổng quan</a>
+        <a href="{% url 'finance:transaction_list' %}" class="shelf-tab {% if current == 'transaction_list' or current == 'transaction_import' %}active{% endif %}"><i class="bi bi-receipt me-1"></i>Giao dịch</a>
+        <a href="{% url 'finance:transfer_list' %}" class="shelf-tab {% if current == 'transfer_list' %}active{% endif %}"><i class="bi bi-arrow-left-right me-1"></i>Chuyển tiền</a>
+        <a href="{% url 'finance:wallet_list' %}" class="shelf-tab {% if current == 'wallet_list' %}active{% endif %}"><i class="bi bi-wallet2 me-1"></i>Ví</a>
+        <a href="{% url 'finance:category_list' %}" class="shelf-tab {% if current == 'category_list' %}active{% endif %}"><i class="bi bi-tags me-1"></i>Danh mục</a>
+        <a href="{% url 'finance:budget_list' %}" class="shelf-tab {% if current == 'budget_list' %}active{% endif %}"><i class="bi bi-pie-chart me-1"></i>Ngân sách</a>
+        <a href="{% url 'finance:subscription_list' %}" class="shelf-tab {% if current == 'subscription_list' %}active{% endif %}"><i class="bi bi-arrow-repeat me-1"></i>Định kỳ</a>
+        <a href="{% url 'finance:saving_goal_list' %}" class="shelf-tab {% if current == 'saving_goal_list' %}active{% endif %}"><i class="bi bi-piggy-bank me-1"></i>Tiết kiệm</a>
+        <a href="{% url 'finance:wishlist' %}" class="shelf-tab {% if current == 'wishlist' %}active{% endif %}"><i class="bi bi-bag-heart me-1"></i>Wishlist</a>
+    </div>
+</nav>
+{% endwith %}
