@@ -4,13 +4,33 @@ Django settings for Life OS project.
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-lifeos-dev-key-change-in-production-2024'
+# Đọc biến môi trường từ .env (không commit file này, xem .env.example)
+load_dotenv(BASE_DIR / '.env')
 
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def env_list(name, default=''):
+    return [item.strip() for item in os.environ.get(name, default).split(',') if item.strip()]
+
+
+DEBUG = env_bool('DJANGO_DEBUG', False)
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY phải được đặt khi DJANGO_DEBUG=False')
+    SECRET_KEY = 'django-insecure-dev-only-key'
+
+ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1' if not DEBUG else '*')
+CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
 
 # Application definition
 INSTALLED_APPS = [
@@ -106,3 +126,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Bảo mật khi chạy production (DEBUG=False)
+if not DEBUG:
+    SESSION_COOKIE_SECURE = env_bool('DJANGO_SECURE_COOKIES', True)
+    CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+    SECURE_SSL_REDIRECT = env_bool('DJANGO_SSL_REDIRECT', False)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
