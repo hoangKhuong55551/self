@@ -36,7 +36,7 @@
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 text-center py-5 text-muted small">Chưa có đoạn code nào. Hãy lưu trữ snippet đầu tiên!</div>
+            <div class="col-12">{% include "partials/empty_state.html" with icon="bi-code-slash" title="Chưa có đoạn code nào" text="Lưu những đoạn code hay dùng để tra cứu nhanh bằng Ctrl+K." %}</div>
             {% endfor %}
         </div>
     </div>

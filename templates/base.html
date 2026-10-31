@@ -3,14 +3,24 @@
 <html lang="vi" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#070b1a">
+    <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/favicon-32.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <!-- Apply saved theme before first paint to avoid a flash -->
     <script>
         (function () {
             var t = 'dark';
-            try { t = localStorage.getItem('lifeos-theme') || 'dark'; } catch (e) {}
+            var accent = '';
+            try {
+                t = localStorage.getItem('lifeos-theme') || 'dark';
+                accent = localStorage.getItem('lifeos-accent') || '';
+            } catch (e) {}
             document.documentElement.setAttribute('data-bs-theme', t);
+            if (accent) document.documentElement.setAttribute('data-accent', accent);
         })();
     </script>
     <title>{% block title %}Life OS — All-in-One Personal Management System{% endblock %}</title>
@@ -28,7 +38,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
     <!-- Life OS Glassmorphism Design System -->
-    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=3.3">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=3.7">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -48,6 +58,19 @@
                     <a href="{% url 'core:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'core' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                         <i class="bi bi-grid-1x2-fill"></i>
                         <span>Dashboard</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'core:weekly_review' %}" class="sidebar-link {% if request.resolver_match.url_name == 'weekly_review' %}active{% endif %}">
+                        <i class="bi bi-calendar-heart"></i>
+                        <span>Tổng kết tuần</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'core:achievements' %}" class="sidebar-link {% if request.resolver_match.url_name == 'achievements' %}active{% endif %}">
+                        <i class="bi bi-award-fill"></i>
+                        <span>Thành tích</span>
                     </a>
                 </li>
 
@@ -92,6 +115,12 @@
                 </li>
 
                 <li class="nav-category">Quản trị</li>
+                <li>
+                    <a href="{% url 'core:export' %}" class="sidebar-link {% if request.resolver_match.url_name == 'export' %}active{% endif %}">
+                        <i class="bi bi-cloud-arrow-down"></i>
+                        <span>Sao lưu dữ liệu</span>
+                    </a>
+                </li>
                 <li>
                     <a href="/admin/" class="sidebar-link">
                         <i class="bi bi-sliders"></i>
@@ -154,6 +183,13 @@
                     <button class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Toggle menu">
                         <i class="bi bi-list"></i>
                     </button>
+                    {% if user.is_authenticated %}
+                    <button type="button" class="cmdk-trigger" id="cmdkTrigger" aria-label="Tìm kiếm nhanh (Ctrl+K)">
+                        <i class="bi bi-search"></i>
+                        <span class="d-none d-sm-inline">Tìm kiếm...</span>
+                        <kbd class="d-none d-md-inline">Ctrl K</kbd>
+                    </button>
+                    {% endif %}
                     <div class="topbar-chip d-none d-md-inline-flex">
                         <i class="bi bi-calendar3"></i>
                         <span id="currentDateDisplay">{% now "l, d F Y" %}</span>
@@ -163,6 +199,43 @@
                 <!-- User profile badge on Topbar -->
                 {% if user.is_authenticated %}
                 <div class="d-flex align-items-center gap-2">
+                    <!-- Notifications -->
+                    <div class="dropdown">
+                        <button class="icon-btn notif-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-label="Nhắc hạn ({{ notification_count }})" title="Nhắc hạn">
+                            <i class="bi bi-bell{% if notification_count %}-fill{% endif %}"></i>
+                            {% if notification_count %}<span class="notif-dot">{{ notification_count }}</span>{% endif %}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end notif-menu">
+                            <div class="notif-header">Nhắc hạn{% if notification_count %} · {{ notification_count }}{% endif %}</div>
+                            {% for n in notifications %}
+                            <a href="{{ n.url }}" class="notif-item">
+                                <span class="notif-icon text-{{ n.tone }}"><i class="bi {{ n.icon }}"></i></span>
+                                <span class="min-w-0">
+                                    <span class="d-block small fw-semibold text-white text-truncate">{{ n.title }}</span>
+                                    <span class="d-block text-dim" style="font-size: 0.72rem;">{{ n.subtitle }}</span>
+                                </span>
+                            </a>
+                            {% empty %}
+                            <div class="notif-empty"><i class="bi bi-check2-circle fs-3 d-block mb-1 text-success"></i>Không có gì cần lo. Tuyệt!</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <!-- Accent picker -->
+                    <div class="dropdown">
+                        <button class="icon-btn" data-bs-toggle="dropdown" aria-label="Chọn màu chủ đạo" title="Màu chủ đạo">
+                            <i class="bi bi-palette-fill"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end accent-menu">
+                            <div class="notif-header">Màu chủ đạo</div>
+                            <div class="accent-swatches">
+                                <button type="button" class="accent-swatch" data-accent-choice="" style="--sw: linear-gradient(135deg, #6366f1, #d946ef);" title="Tím"></button>
+                                <button type="button" class="accent-swatch" data-accent-choice="ocean" style="--sw: linear-gradient(135deg, #0ea5e9, #22d3ee);" title="Đại dương"></button>
+                                <button type="button" class="accent-swatch" data-accent-choice="emerald" style="--sw: linear-gradient(135deg, #10b981, #84cc16);" title="Ngọc lục bảo"></button>
+                                <button type="button" class="accent-swatch" data-accent-choice="rose" style="--sw: linear-gradient(135deg, #f43f5e, #f97316);" title="Hồng"></button>
+                                <button type="button" class="accent-swatch" data-accent-choice="amber" style="--sw: linear-gradient(135deg, #f59e0b, #ef4444);" title="Hổ phách"></button>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Theme Toggle -->
                     <button id="themeToggleBtn" class="icon-btn" title="Chuyển chế độ sáng/tối (Alt+T)" aria-label="Chuyển chế độ sáng/tối">
                         <i class="bi bi-sun-fill" id="themeIcon"></i>
@@ -202,13 +275,73 @@
         </div>
     </div>
 
+    {% if user.is_authenticated %}
+    <!-- Command palette (Ctrl+K) -->
+    <div class="cmdk" id="cmdk" hidden>
+        <div class="cmdk-backdrop" data-cmdk-close></div>
+        <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Tìm kiếm nhanh">
+            <div class="cmdk-input-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" id="cmdkInput" placeholder="Tìm task, ghi chú, sách, giao dịch... hoặc gõ tên trang" autocomplete="off" spellcheck="false">
+                <kbd>Esc</kbd>
+            </div>
+            <ul class="cmdk-list" id="cmdkList" role="listbox"></ul>
+            <div class="cmdk-footer">
+                <span><kbd>↑</kbd><kbd>↓</kbd> di chuyển</span>
+                <span><kbd>Enter</kbd> mở</span>
+                <span><kbd>Esc</kbd> đóng</span>
+            </div>
+        </div>
+    </div>
+    <script id="cmdk-pages" type="application/json">
+        [
+            {"title": "Dashboard", "icon": "bi-grid-1x2-fill", "url": "{% url 'core:dashboard' %}", "keywords": "trang chu tong quan"},
+            {"title": "Tài chính", "icon": "bi-wallet2", "url": "{% url 'finance:dashboard' %}", "keywords": "tai chinh tien finance"},
+            {"title": "Giao dịch", "icon": "bi-receipt", "url": "{% url 'finance:transaction_list' %}", "keywords": "giao dich thu chi them"},
+            {"title": "Ví", "icon": "bi-credit-card", "url": "{% url 'finance:wallet_list' %}", "keywords": "vi wallet"},
+            {"title": "Ngân sách", "icon": "bi-pie-chart", "url": "{% url 'finance:budget_list' %}", "keywords": "ngan sach budget"},
+            {"title": "Subscriptions", "icon": "bi-arrow-repeat", "url": "{% url 'finance:subscription_list' %}", "keywords": "dang ky dinh ky"},
+            {"title": "Wishlist", "icon": "bi-bag-heart", "url": "{% url 'finance:wishlist' %}", "keywords": "mua sam"},
+            {"title": "Tài sản", "icon": "bi-activity", "url": "{% url 'finance:asset_list' %}", "keywords": "tai san asset"},
+            {"title": "Hiệu suất", "icon": "bi-check2-square", "url": "{% url 'productivity:dashboard' %}", "keywords": "hieu suat productivity"},
+            {"title": "Bảng Kanban", "icon": "bi-kanban", "url": "{% url 'productivity:kanban_board' %}", "keywords": "kanban task cong viec"},
+            {"title": "Mục tiêu", "icon": "bi-bullseye", "url": "{% url 'productivity:goal_list' %}", "keywords": "muc tieu goal okr"},
+            {"title": "Thói quen", "icon": "bi-fire", "url": "{% url 'productivity:habit_tracker' %}", "keywords": "thoi quen habit streak"},
+            {"title": "Pomodoro", "icon": "bi-stopwatch", "url": "{% url 'productivity:pomodoro_timer' %}", "keywords": "tap trung focus"},
+            {"title": "Học tập", "icon": "bi-mortarboard-fill", "url": "{% url 'academic:dashboard' %}", "keywords": "hoc tap academic"},
+            {"title": "GPA", "icon": "bi-graph-up", "url": "{% url 'academic:gpa_tracker' %}", "keywords": "diem gpa"},
+            {"title": "Mô phỏng GPA", "icon": "bi-calculator", "url": "{% url 'academic:gpa_simulator' %}", "keywords": "simulator"},
+            {"title": "Ghi chú", "icon": "bi-journal-text", "url": "{% url 'academic:note_list' %}", "keywords": "ghi chu note"},
+            {"title": "Code snippets", "icon": "bi-code-slash", "url": "{% url 'academic:snippet_list' %}", "keywords": "code doan ma"},
+            {"title": "Tổng kết tuần", "icon": "bi-calendar-heart", "url": "{% url 'core:weekly_review' %}", "keywords": "tong ket tuan review suy ngam"},
+            {"title": "Thành tích & Lịch sử XP", "icon": "bi-award-fill", "url": "{% url 'core:achievements' %}", "keywords": "huy hieu badge achievement xp"},
+            {"title": "Thư viện", "icon": "bi-collection-play", "url": "{% url 'library:shelf' %}", "keywords": "thu vien sach phim game"},
+            {"title": "Sao lưu / xuất dữ liệu", "icon": "bi-cloud-arrow-down", "url": "{% url 'core:export' %}", "keywords": "export backup csv json excel"},
+            {"title": "Đổi giao diện sáng / tối", "icon": "bi-circle-half", "action": "theme", "keywords": "theme dark light sang toi"}
+        ]
+    </script>
+    {% endif %}
+
+    {% if user.is_authenticated %}
+    <!-- Mobile bottom navigation -->
+    {% with app=request.resolver_match.app_name url_name=request.resolver_match.url_name %}
+    <nav class="bottom-nav" aria-label="Điều hướng chính">
+        <a href="{% url 'core:dashboard' %}" class="{% if app == 'core' and url_name == 'dashboard' %}active{% endif %}"><i class="bi bi-grid-1x2-fill"></i>Tổng quan</a>
+        <a href="{% url 'finance:dashboard' %}" class="{% if app == 'finance' %}active{% endif %}"><i class="bi bi-wallet2"></i>Tài chính</a>
+        <a href="{% url 'productivity:dashboard' %}" class="{% if app == 'productivity' %}active{% endif %}"><i class="bi bi-check2-square"></i>Hiệu suất</a>
+        <a href="{% url 'library:shelf' %}" class="{% if app == 'library' %}active{% endif %}"><i class="bi bi-collection-play"></i>Thư viện</a>
+        <button type="button" id="bottomNavMenu"><i class="bi bi-list"></i>Menu</button>
+    </nav>
+    {% endwith %}
+    {% endif %}
+
     <!-- Mobile Overlay Backdrop -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="{% static 'js/app.js' %}?v=3.1"></script>
+    <script src="{% static 'js/app.js' %}?v=3.6"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

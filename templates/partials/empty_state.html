@@ -1,0 +1,10 @@
+{% comment %}
+Trạng thái trống dùng chung.
+Variables: icon (bootstrap icon class), title, text, cta_url, cta_label (tuỳ chọn)
+{% endcomment %}
+<div class="empty-state">
+    <div class="empty-state-icon"><i class="bi {{ icon|default:'bi-inbox' }}"></i></div>
+    <div class="empty-state-title">{{ title }}</div>
+    {% if text %}<p class="empty-state-text">{{ text }}</p>{% endif %}
+    {% if cta_url %}<a href="{{ cta_url }}" class="btn btn-primary btn-sm px-3"><i class="bi bi-plus-lg me-1"></i>{{ cta_label }}</a>{% endif %}
+</div>

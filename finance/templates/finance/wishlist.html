@@ -42,9 +42,7 @@
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 text-center py-5 text-muted small">
-                Danh sách mong muốn đang trống. Hãy thêm món đồ bạn muốn mua!
-            </div>
+            <div class="col-12">{% include "partials/empty_state.html" with icon="bi-bag-heart" title="Wishlist đang trống" text="Thêm món đồ bạn muốn mua để lên kế hoạch tiết kiệm." %}</div>
             {% endfor %}
         </div>
     </div>

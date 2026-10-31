@@ -35,7 +35,7 @@
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 text-center py-5 text-muted small">Chưa có ghi chú nào. Hãy tạo ghi chú đầu tiên!</div>
+            <div class="col-12">{% if query %}{% include "partials/empty_state.html" with icon="bi-search" title="Không tìm thấy ghi chú" text="Thử từ khoá khác hoặc xoá bộ lọc." %}{% else %}{% include "partials/empty_state.html" with icon="bi-journal-text" title="Bộ não thứ hai đang trống" text="Ghi lại kiến thức, ý tưởng bằng Markdown ở form bên phải." %}{% endif %}</div>
             {% endfor %}
         </div>
     </div>

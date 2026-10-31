@@ -62,6 +62,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // 3. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', function (e) {
+    // Ctrl/Cmd+K → Command palette
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      CommandPalette.toggle();
+      return;
+    }
     // Alt+T → Toggle theme
     if (e.altKey && e.key === 't') {
       themeBtn && themeBtn.click();
@@ -118,19 +124,36 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // ─────────────────────────────────────────────
-  // 7. Smooth page entrance animation
+  // 7. Accent color picker
   // ─────────────────────────────────────────────
-  const mainContent = document.querySelector('.content-container');
-  if (mainContent) {
-    mainContent.style.opacity = '0';
-    mainContent.style.transform = 'translateY(8px)';
-    mainContent.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-    requestAnimationFrame(() => {
-      mainContent.style.opacity = '1';
-      mainContent.style.transform = 'translateY(0)';
+  const swatches = document.querySelectorAll('[data-accent-choice]');
+  const markActiveSwatch = () => {
+    const current = html.getAttribute('data-accent') || '';
+    swatches.forEach(s => s.classList.toggle('active', s.dataset.accentChoice === current));
+  };
+  swatches.forEach(function (swatch) {
+    swatch.addEventListener('click', function () {
+      const accent = swatch.dataset.accentChoice;
+      if (accent) html.setAttribute('data-accent', accent); else html.removeAttribute('data-accent');
+      try { localStorage.setItem('lifeos-accent', accent); } catch (e) {}
+      markActiveSwatch();
     });
-  }
+  });
+  markActiveSwatch();
+
+  // ─────────────────────────────────────────────
+  // 10. Mobile bottom nav "Menu" opens the sidebar
+  // ─────────────────────────────────────────────
+  document.getElementById('bottomNavMenu')?.addEventListener('click', () => toggleBtn?.click());
 });
+
+// Gỡ skeleton khi Chart.js vẽ xong lần đầu
+if (window.Chart) {
+  Chart.register({
+    id: 'lifeosReady',
+    afterRender(chart) { chart.canvas.closest('.chart-box')?.classList.add('chart-ready'); },
+  });
+}
 
 // ─────────────────────────────────────────────
 // 8. Global Toast Notification Helper
@@ -169,4 +192,143 @@ function showToast(message, type = 'success') {
   toast.querySelector('.btn-close').addEventListener('click', dismiss);
   container.appendChild(toast);
   setTimeout(dismiss, 4000);
+}
+
+// ─────────────────────────────────────────────
+// 9. Command Palette (Ctrl+K): pages + live search across modules
+// ─────────────────────────────────────────────
+const CommandPalette = (function () {
+  let root, input, list, pages = [], items = [], active = 0, timer = null, lastQuery = '';
+
+  // Bỏ dấu tiếng Việt để "tai chinh" khớp "Tài chính"
+  const fold = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+
+  function init() {
+    root = document.getElementById('cmdk');
+    if (!root) return;
+    input = document.getElementById('cmdkInput');
+    list = document.getElementById('cmdkList');
+    try { pages = JSON.parse(document.getElementById('cmdk-pages').textContent); } catch (e) { pages = []; }
+
+    document.getElementById('cmdkTrigger')?.addEventListener('click', open);
+    root.querySelectorAll('[data-cmdk-close]').forEach(el => el.addEventListener('click', close));
+    input.addEventListener('input', onInput);
+    input.addEventListener('keydown', onKey);
+    list.addEventListener('mousemove', e => {
+      const li = e.target.closest('.cmdk-item');
+      if (li) setActive(Number(li.dataset.index));
+    });
+    list.addEventListener('click', e => {
+      const li = e.target.closest('.cmdk-item');
+      if (li) run(items[Number(li.dataset.index)]);
+    });
+  }
+
+  function open() {
+    if (!root) return;
+    root.hidden = false;
+    input.value = '';
+    lastQuery = '';
+    render(pages.map(p => ({ ...p, group: 'Trang' })));
+    requestAnimationFrame(() => input.focus());
+  }
+
+  function close() { if (root) root.hidden = true; }
+  function toggle() { if (root) (root.hidden ? open() : close()); }
+
+  function onInput() {
+    const q = input.value.trim();
+    const fq = fold(q);
+    const matchedPages = pages
+      .filter(p => !fq || fold(p.title + ' ' + (p.keywords || '')).includes(fq))
+      .map(p => ({ ...p, group: 'Trang' }));
+    render(matchedPages, q.length >= 2);
+
+    clearTimeout(timer);
+    if (q.length < 2) return;
+    timer = setTimeout(() => search(q, matchedPages), 180);
+  }
+
+  function search(q, matchedPages) {
+    lastQuery = q;
+    fetch('/search/?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+      .then(r => r.ok ? r.json() : { results: [] })
+      .then(data => {
+        if (q !== lastQuery || root.hidden) return; // kết quả cũ, bỏ qua
+        const found = (data.results || []).map(r => ({ ...r, group: r.type }));
+        render(matchedPages.concat(found));
+      })
+      .catch(() => {});
+  }
+
+  function render(newItems, loading) {
+    items = newItems;
+    active = 0;
+    list.innerHTML = '';
+    if (!items.length) {
+      const empty = document.createElement('li');
+      empty.className = 'cmdk-empty';
+      empty.textContent = loading ? 'Đang tìm...' : 'Không tìm thấy kết quả nào';
+      list.appendChild(empty);
+      return;
+    }
+    let lastGroup = null;
+    items.forEach((item, i) => {
+      if (item.group !== lastGroup) {
+        lastGroup = item.group;
+        const g = document.createElement('li');
+        g.className = 'cmdk-group';
+        g.textContent = item.group;
+        list.appendChild(g);
+      }
+      const li = document.createElement('li');
+      li.className = 'cmdk-item';
+      li.dataset.index = i;
+      li.setAttribute('role', 'option');
+      li.innerHTML = '<i class="bi"></i><div class="cmdk-item-text"><div class="cmdk-item-title"></div><div class="cmdk-item-sub"></div></div>';
+      li.querySelector('i').classList.add(item.icon || 'bi-arrow-right');
+      li.querySelector('.cmdk-item-title').textContent = item.title;
+      const sub = li.querySelector('.cmdk-item-sub');
+      if (item.subtitle) sub.textContent = item.subtitle; else sub.remove();
+      list.appendChild(li);
+    });
+    setActive(0);
+  }
+
+  function setActive(i) {
+    const els = list.querySelectorAll('.cmdk-item');
+    if (!els.length) return;
+    active = (i + els.length) % els.length;
+    els.forEach(el => el.classList.toggle('active', Number(el.dataset.index) === active));
+    els[active].scrollIntoView({ block: 'nearest' });
+  }
+
+  function onKey(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); run(items[active]); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  }
+
+  function run(item) {
+    if (!item) return;
+    close();
+    if (item.action === 'theme') {
+      document.getElementById('themeToggleBtn')?.click();
+    } else if (item.url) {
+      window.location.href = item.url;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  return { open, close, toggle };
+})();
+
+// ─────────────────────────────────────────────
+// 11. PWA: đăng ký service worker (cần HTTPS hoặc localhost)
+// ─────────────────────────────────────────────
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
 }

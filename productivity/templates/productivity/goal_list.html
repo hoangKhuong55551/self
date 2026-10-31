@@ -32,9 +32,7 @@
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 text-center py-5 text-muted small">
-                Chưa có mục tiêu nào. Hãy thiết lập mục tiêu lớn của bạn ở cột bên phải!
-            </div>
+            <div class="col-12">{% include "partials/empty_state.html" with icon="bi-bullseye" title="Chưa có mục tiêu nào" text="Đặt một mục tiêu lớn ở cột bên phải, rồi chia nhỏ thành task trên Kanban." %}</div>
             {% endfor %}
         </div>
     </div>
