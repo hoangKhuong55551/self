@@ -5,6 +5,7 @@ from django.db.models import Sum, F, FloatField, ExpressionWrapper, Q
 
 from .models import Semester, Course, Tag, Note, CodeSnippet
 from .forms import SemesterForm, CourseForm, NoteForm, CodeSnippetForm
+from .services import gpa_trend, study_time_by_course
 
 
 @login_required
@@ -30,7 +31,14 @@ def academic_dashboard(request):
     recent_notes = Note.objects.filter(user=request.user)[:5]
     recent_snippets = CodeSnippet.objects.filter(user=request.user)[:5]
 
+    study_courses = study_time_by_course(request.user, current_sem)
+    max_minutes = max((c.focus_minutes for c in study_courses), default=0)
+    for c in study_courses:
+        c.bar_percent = round(c.focus_minutes / max_minutes * 100) if max_minutes else 0
+
     context = {
+        'gpa_trend': gpa_trend(request.user),
+        'study_courses': study_courses,
         'semesters': semesters,
         'current_sem': current_sem,
         'cgpa': cgpa,

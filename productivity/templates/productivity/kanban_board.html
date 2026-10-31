@@ -41,6 +41,12 @@
                         <label class="form-label">Tên công việc</label>
                         {{ form.title }}
                     </div>
+                    {% if form.fields.course.queryset.exists %}
+                    <div class="mb-3">
+                        <label class="form-label">Môn học liên quan</label>
+                        {{ form.course }}
+                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         <label class="form-label">Ma trận Eisenhower (Độ ưu tiên)</label>
                         {{ form.quadrant }}

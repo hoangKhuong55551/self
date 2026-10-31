@@ -1,7 +1,13 @@
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from datetime import timedelta
+
+from django.utils import timezone
+
 from academic.models import Semester, Course, Tag, Note, CodeSnippet
+from academic.services import gpa_trend, study_time_by_course
+from productivity.models import Goal, PomodoroSession, Task
 
 User = get_user_model()
 
@@ -192,3 +198,66 @@ class SecondBrainTest(TestCase):
         CodeSnippet.objects.create(user=self.user, title='JS', language='javascript', code='log()')
         response = self.client.get(reverse('academic:snippet_list'), {'lang': 'javascript'})
         self.assertEqual([s.title for s in response.context['snippets']], ['JS'])
+
+
+class CourseStudyLinkTest(TestCase):
+    """Liên kết Task ↔ Course: thời gian Pomodoro được thống kê theo môn học."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='linker', password='password123')
+        self.client.login(username='linker', password='password123')
+        self.sem = Semester.objects.create(user=self.user, name='HK1', year=2026, term='spring', is_current=True)
+        self.web = Course.objects.create(semester=self.sem, name='Web', credits=3)
+        self.db = Course.objects.create(semester=self.sem, name='CSDL', credits=3)
+        self.goal = Goal.objects.create(user=self.user, title='Học tốt')
+
+    def _focus(self, course, minutes, completed=True, when=None):
+        task = Task.objects.create(goal=self.goal, title=f'Ôn {course.name}', course=course)
+        PomodoroSession.objects.create(
+            task=task, start_time=when or timezone.now(), duration_minutes=minutes, completed=completed
+        )
+
+    def test_study_time_by_course_counts_only_completed(self):
+        self._focus(self.web, 25)
+        self._focus(self.web, 50)
+        self._focus(self.db, 25)
+        self._focus(self.db, 99, completed=False)
+        stats = {c.name: (c.focus_minutes, c.sessions) for c in study_time_by_course(self.user)}
+        self.assertEqual(stats, {'Web': (75, 2), 'CSDL': (25, 1)})
+
+    def test_dashboard_shows_study_time_and_gpa_trend(self):
+        self._focus(self.web, 125)
+        response = self.client.get(reverse('academic:dashboard'))
+        self.assertEqual([c.name for c in response.context['study_courses']], ['Web'])
+        self.assertContains(response, '2h 05m')
+
+    def test_task_form_only_offers_own_courses(self):
+        other = User.objects.create_user(username='x', password='password123')
+        other_sem = Semester.objects.create(user=other, name='X', year=2026, term='spring')
+        foreign = Course.objects.create(semester=other_sem, name='Foreign', credits=3)
+        response = self.client.post(reverse('productivity:kanban_board'), {
+            'goal': self.goal.pk, 'title': 'Hack', 'course': foreign.pk,
+            'status': 'todo', 'quadrant': 'do', 'estimated_pomodoros': 1,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Task.objects.filter(title='Hack').exists())
+
+    def test_gpa_trend_orders_terms_and_accumulates(self):
+        Course.objects.filter(pk=self.web.pk).update(grade=4.0, is_completed=True)
+        fall = Semester.objects.create(user=self.user, name='HK2', year=2026, term='fall')
+        summer = Semester.objects.create(user=self.user, name='Hè', year=2026, term='summer')
+        Course.objects.create(semester=fall, name='AI', credits=3, grade=2.0, is_completed=True)
+        Course.objects.create(semester=summer, name='TT', credits=6, grade=3.0, is_completed=True)
+        Semester.objects.create(user=self.user, name='Trống', year=2025, term='fall')
+        trend = gpa_trend(self.user)
+        self.assertEqual([t['label'] for t in trend], ['HK1', 'HK2', 'Hè'])
+        self.assertEqual([t['gpa'] for t in trend], [4.0, 2.0, 3.0])
+        self.assertEqual([t['cgpa'] for t in trend], [4.0, 3.0, 3.0])
+
+    def test_weekly_review_includes_academic(self):
+        self._focus(self.db, 30)
+        self._focus(self.web, 45, when=timezone.now() - timedelta(days=30))
+        Note.objects.create(user=self.user, title='N', content='c')
+        response = self.client.get(reverse('core:weekly_review'))
+        self.assertEqual([c.name for c in response.context['study_courses']], ['CSDL'])
+        self.assertEqual(response.context['notes_written'], 1)

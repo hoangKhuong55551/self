@@ -1,4 +1,5 @@
 from django import forms
+from academic.models import Course
 from .models import Goal, Task, Habit
 
 class GoalForm(forms.ModelForm):
@@ -17,9 +18,10 @@ class GoalForm(forms.ModelForm):
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['goal', 'title', 'description', 'status', 'quadrant', 'due_date', 'estimated_pomodoros']
+        fields = ['goal', 'title', 'description', 'course', 'status', 'quadrant', 'due_date', 'estimated_pomodoros']
         widgets = {
             'goal': forms.Select(attrs={'class': 'form-select'}),
+            'course': forms.Select(attrs={'class': 'form-select'}),
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên đầu việc cần làm...'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Ghi chú công việc...'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
@@ -33,6 +35,10 @@ class TaskForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields['goal'].queryset = Goal.objects.filter(user=user)
+            self.fields['course'].queryset = Course.objects.filter(
+                semester__user=user
+            ).select_related('semester').order_by('-semester__year', 'name')
+        self.fields['course'].empty_label = '— Không gắn môn học —'
 
 
 class HabitForm(forms.ModelForm):

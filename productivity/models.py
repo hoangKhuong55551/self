@@ -85,6 +85,13 @@ class Task(models.Model):
     )
     title = models.CharField(max_length=300)
     description = models.TextField(blank=True, default='')
+    course = models.ForeignKey(
+        'academic.Course',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='tasks',
+        help_text="Môn học liên quan (để thống kê thời gian học)"
+    )
     status = models.CharField(
         max_length=15,
         choices=Status.choices,

@@ -2,6 +2,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from decimal import Decimal
+from datetime import date
 from io import StringIO
 
 from dateutil.relativedelta import relativedelta
@@ -9,6 +10,7 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from finance.models import Asset, Budget, Category, Subscription, Transaction, Wallet, WishlistItem, WorkoutLog
+from finance.services import monthly_cashflow
 
 User = get_user_model()
 
@@ -210,3 +212,33 @@ class WorkoutGearTest(TestCase):
         shoes.refresh_from_db()
         self.assertTrue(shoes.needs_replacement)
         self.assertEqual(shoes.condition, 'replace')
+
+
+class CashflowTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='flow', password='password123')
+        self.wallet = Wallet.objects.create(user=self.user, name='Ví')
+        self.today = date(2026, 10, 15)
+
+    def _txn(self, kind, amount, day):
+        Transaction.objects.create(
+            user=self.user, wallet=self.wallet, transaction_type=kind, amount=Decimal(amount), date=day
+        )
+
+    def test_monthly_cashflow_fills_empty_months(self):
+        self._txn('income', '1000', date(2026, 10, 1))
+        self._txn('expense', '300', date(2026, 10, 9))
+        self._txn('expense', '200', date(2026, 8, 20))
+        self._txn('income', '999', date(2025, 10, 31))  # ngoài cửa sổ 12 tháng
+        rows = monthly_cashflow(self.user, today=self.today)
+        self.assertEqual(len(rows), 12)
+        self.assertEqual(rows[0]['label'], 'T11/25')
+        self.assertEqual(rows[-1], {'label': 'T10/26', 'income': 1000.0, 'expense': 300.0, 'net': 700.0})
+        self.assertEqual(rows[-3]['expense'], 200.0)
+        self.assertEqual(sum(r['income'] for r in rows), 1000.0)
+
+    def test_dashboard_renders_chart_data(self):
+        self.client.login(username='flow', password='password123')
+        response = self.client.get(reverse('finance:dashboard'))
+        self.assertContains(response, 'id="cashflow-data"')
+        self.assertEqual(len(response.context['cashflow']), 12)

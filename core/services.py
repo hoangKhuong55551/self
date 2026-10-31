@@ -209,6 +209,7 @@ def get_week_review(user, week_start):
     from finance.models import Transaction
     from productivity.models import Task, PomodoroSession, HabitLog, Habit
     from library.models import MediaItem
+    from academic.models import Course, Note, CodeSnippet
     from .models import XPEvent, UserAchievement
     from .achievements import ACHIEVEMENTS_BY_CODE
 
@@ -243,6 +244,17 @@ def get_week_review(user, week_start):
 
     media_done = MediaItem.objects.filter(user=user, status='done', finished_on__range=days)
 
+    week_focus = Q(
+        tasks__pomodoro_sessions__completed=True,
+        tasks__pomodoro_sessions__start_time__date__range=days,
+    )
+    study_courses = (
+        Course.objects.filter(semester__user=user)
+        .annotate(focus_minutes=Sum('tasks__pomodoro_sessions__duration_minutes', filter=week_focus))
+        .filter(focus_minutes__gt=0)
+        .order_by('-focus_minutes')
+    )
+
     xp_week = XPEvent.objects.filter(
         user=user, created_at__date__range=days
     ).aggregate(total=Sum('amount'))['total'] or 0
@@ -268,6 +280,9 @@ def get_week_review(user, week_start):
         'checkins': checkins,
         'habit_rate': habit_rate,
         'media_done': media_done,
+        'study_courses': study_courses,
+        'notes_written': Note.objects.filter(user=user, created_at__date__range=days).count(),
+        'snippets_saved': CodeSnippet.objects.filter(user=user, created_at__date__range=days).count(),
         'xp_week': xp_week,
         'badges': badges,
     }

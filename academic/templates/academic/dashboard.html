@@ -64,6 +64,55 @@
     </div>
 </div>
 
+<div class="row g-4 mb-4">
+    <!-- Xu hướng GPA qua các học kỳ -->
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-graph-up me-2 text-primary"></i>Xu hướng GPA</div>
+            <div class="card-body">
+                {% if gpa_trend|length >= 2 %}
+                <div style="position: relative; height: 240px;">
+                    <canvas id="gpaTrendChart" role="img" aria-label="Biểu đồ GPA học kỳ và GPA tích lũy qua các học kỳ"></canvas>
+                </div>
+                <table class="visually-hidden">
+                    <caption>GPA theo học kỳ</caption>
+                    <tr><th>Học kỳ</th><th>GPA học kỳ</th><th>GPA tích lũy</th></tr>
+                    {% for t in gpa_trend %}<tr><td>{{ t.label }}</td><td>{{ t.gpa }}</td><td>{{ t.cgpa }}</td></tr>{% endfor %}
+                </table>
+                {{ gpa_trend|json_script:"gpa-trend-data" }}
+                {% else %}
+                {% include "partials/empty_state.html" with icon="bi-graph-up" title="Chưa đủ dữ liệu" text="Cần ít nhất 2 học kỳ có môn đã chấm điểm để vẽ xu hướng." %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Thời gian tập trung theo môn (từ Pomodoro của task gắn môn học) -->
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-stopwatch me-2 text-info"></i>Thời gian học theo môn</span>
+                {% if current_sem %}<small class="text-muted">{{ current_sem.name }}</small>{% endif %}
+            </div>
+            <div class="card-body">
+                {% for c in study_courses %}
+                <div class="mb-3" title="{{ c.sessions }} phiên Pomodoro">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-white text-truncate me-2">{{ c.name }}</span>
+                        <span class="text-muted font-monospace">{{ c.focus_minutes|minutes_hm }}</span>
+                    </div>
+                    <div class="progress" style="height: 6px;" role="progressbar" aria-label="{{ c.name }}: {{ c.focus_minutes }} phút">
+                        <div class="progress-bar bg-info" style="width: {{ c.bar_percent }}%;"></div>
+                    </div>
+                </div>
+                {% empty %}
+                {% include "partials/empty_state.html" with icon="bi-stopwatch" title="Chưa có thời gian học" text="Gắn task với môn học trên Kanban rồi chạy Pomodoro để thống kê tại đây." %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <!-- Cột trái: Bảng điểm các học kỳ -->
     <div class="col-lg-6">
@@ -139,4 +188,59 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('gpaTrendChart');
+    const dataEl = document.getElementById('gpa-trend-data');
+    if (!canvas || !dataEl || !window.Chart) return;
+    const trend = JSON.parse(dataEl.textContent);
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: trend.map(t => t.label),
+            datasets: [
+                {
+                    label: 'GPA học kỳ',
+                    data: trend.map(t => t.gpa),
+                    borderColor: '#818cf8',
+                    backgroundColor: '#818cf8',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.25,
+                },
+                {
+                    label: 'GPA tích lũy',
+                    data: trend.map(t => t.cgpa),
+                    borderColor: '#22d3ee',
+                    backgroundColor: '#22d3ee',
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointStyle: 'rectRot',
+                    tension: 0.25,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8 } },
+                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)}` } },
+            },
+            scales: {
+                y: { min: 0, max: 4, ticks: { stepSize: 1 }, grid: { drawTicks: false } },
+                x: { grid: { display: false } },
+            },
+        },
+    });
+});
+</script>
 {% endblock %}

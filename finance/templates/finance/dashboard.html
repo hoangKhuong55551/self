@@ -61,6 +61,25 @@
     </div>
 </div>
 
+<!-- Dòng tiền 12 tháng -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bar-chart-line me-2 text-primary"></i>Dòng tiền 12 tháng</span>
+        <small class="text-muted" id="cashflowNetSummary"></small>
+    </div>
+    <div class="card-body">
+        <div style="position: relative; height: 260px;">
+            <canvas id="cashflowChart" role="img" aria-label="Biểu đồ cột thu nhập và chi tiêu theo tháng trong 12 tháng gần nhất"></canvas>
+        </div>
+        <table class="visually-hidden">
+            <caption>Thu chi theo tháng</caption>
+            <tr><th>Tháng</th><th>Thu nhập</th><th>Chi tiêu</th><th>Chênh lệch</th></tr>
+            {% for m in cashflow %}<tr><td>{{ m.label }}</td><td>{{ m.income|currency_vn }}</td><td>{{ m.expense|currency_vn }}</td><td>{{ m.net|currency_vn }}</td></tr>{% endfor %}
+        </table>
+        {{ cashflow|json_script:"cashflow-data" }}
+    </div>
+</div>
+
 <div class="row g-4">
     <!-- Transactions and Budgets -->
     <div class="col-lg-8">
@@ -190,4 +209,54 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('cashflowChart');
+    const dataEl = document.getElementById('cashflow-data');
+    if (!canvas || !dataEl || !window.Chart) return;
+    const rows = JSON.parse(dataEl.textContent);
+    const vnd = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
+    const compact = new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 });
+
+    const net = rows.reduce((s, r) => s + r.net, 0);
+    const summary = document.getElementById('cashflowNetSummary');
+    if (summary) summary.textContent = `Tích lũy 12 tháng: ${net >= 0 ? '+' : ''}${vnd.format(net)} đ`;
+
+    const bar = { borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', borderWidth: 0, maxBarThickness: 18, categoryPercentage: 0.7, barPercentage: 0.9 };
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [
+                { label: 'Thu nhập', data: rows.map(r => r.income), backgroundColor: '#10b981', ...bar },
+                { label: 'Chi tiêu', data: rows.map(r => r.expense), backgroundColor: '#f43f5e', ...bar },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10 } },
+                tooltip: {
+                    callbacks: {
+                        label: c => ` ${c.dataset.label}: ${vnd.format(c.parsed.y)} đ`,
+                        footer: items => {
+                            const r = rows[items[0].dataIndex];
+                            return `Chênh lệch: ${r.net >= 0 ? '+' : ''}${vnd.format(r.net)} đ`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: v => compact.format(v) }, grid: { drawTicks: false } },
+                x: { grid: { display: false } },
+            },
+        },
+    });
+});
+</script>
 {% endblock %}

@@ -1,8 +1,12 @@
 """
 Nghiệp vụ tài chính dùng chung cho view, middleware và management command.
 """
+from decimal import Decimal
+
+from dateutil.relativedelta import relativedelta
 from django.db import transaction as db_transaction
-from django.db.models import F
+from django.db.models import F, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
 from .models import Budget, Transaction, Wallet
@@ -58,3 +62,35 @@ def charge_due_subscriptions(subscriptions, today=None):
             check_budget_and_penalize(sub.user, txn)
             count += 1
     return count
+
+
+def monthly_cashflow(user, months=12, today=None):
+    """
+    Thu/chi theo từng tháng trong `months` tháng gần nhất (kể cả tháng hiện tại),
+    tháng không có giao dịch vẫn có mặt với giá trị 0.
+    """
+    today = today or timezone.now().date()
+    first = today.replace(day=1) - relativedelta(months=months - 1)
+    rows = (
+        Transaction.objects.filter(user=user, date__gte=first, date__lte=today)
+        .annotate(month=TruncMonth('date'))
+        .values('month')
+        .annotate(
+            income=Sum('amount', filter=Q(transaction_type=Transaction.TransactionType.INCOME)),
+            expense=Sum('amount', filter=Q(transaction_type=Transaction.TransactionType.EXPENSE)),
+        )
+    )
+    by_month = {r['month']: r for r in rows}
+    result = []
+    for i in range(months):
+        month = first + relativedelta(months=i)
+        row = by_month.get(month, {})
+        income = row.get('income') or Decimal('0')
+        expense = row.get('expense') or Decimal('0')
+        result.append({
+            'label': f'T{month.month}/{month.year % 100:02d}',
+            'income': float(income),
+            'expense': float(expense),
+            'net': float(income - expense),
+        })
+    return result

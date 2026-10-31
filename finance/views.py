@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from .models import Wallet, Transaction, Budget, Subscription, WishlistItem, Asset
 from .forms import WalletForm, TransactionForm, BudgetForm, SubscriptionForm, WishlistItemForm
-from .services import check_budget_and_penalize
+from .services import check_budget_and_penalize, monthly_cashflow
 
 
 @login_required
@@ -58,6 +58,7 @@ def finance_dashboard(request):
         'subscriptions': subscriptions,
         'wishlist': wishlist,
         'current_month': today.strftime("%m/%Y"),
+        'cashflow': monthly_cashflow(request.user, today=today),
     }
     return render(request, 'finance/dashboard.html', context)
 

@@ -56,3 +56,14 @@ def float_vn(value, decimal_places=2):
         return formatted
     except (ValueError, TypeError):
         return str(value)
+
+
+@register.filter(name='minutes_hm')
+def minutes_hm(value):
+    """125 -> '2h 05m', 40 -> '40m'."""
+    try:
+        total = int(value or 0)
+    except (TypeError, ValueError):
+        return value
+    hours, minutes = divmod(total, 60)
+    return f"{hours}h {minutes:02d}m" if hours else f"{minutes}m"
