@@ -17,9 +17,12 @@ Variables: task, show_start (bool)
         <span class="badge bg-dark-subtle border border-dark-subtle text-muted small"
               style="font-size: 0.68rem;">{{ t.get_quadrant_display }}</span>
         {% endif %}
-        <small class="text-muted">
-            <i class="bi bi-stopwatch"></i> {{ t.actual_pomodoros }}/{{ t.estimated_pomodoros }}
-        </small>
+        <span class="d-flex align-items-center gap-2">
+            <small class="text-muted">
+                <i class="bi bi-stopwatch"></i> {{ t.actual_pomodoros }}/{{ t.estimated_pomodoros }}
+            </small>
+            <a href="{% url 'productivity:task_edit' t.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa task {{ t.title }}"><i class="bi bi-pencil"></i></a>
+        </span>
     </div>
 
     <!-- Title -->

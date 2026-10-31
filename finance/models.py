@@ -510,6 +510,17 @@ class Asset(models.Model):
         pct = self.lifespan_percent
         return pct is not None and pct >= 80
 
+    def recalculate_usage(self):
+        """Tổng giờ dùng từ nhật ký vận động; cập nhật tình trạng theo % tuổi thọ (chỉ làm xấu đi, không tự 'làm mới')."""
+        total_minutes = self.workout_logs.aggregate(total=Sum('duration_minutes'))['total'] or 0
+        self.usage_hours = total_minutes / 60.0
+        pct = self.lifespan_percent
+        if pct is not None and pct >= 80:
+            self.condition = self.Condition.REPLACE
+        elif pct is not None and pct >= 50 and self.condition in (self.Condition.NEW, self.Condition.GOOD):
+            self.condition = self.Condition.WORN
+        self.save(update_fields=['usage_hours', 'condition'])
+
 
 class WorkoutLog(models.Model):
     """Nhật ký vận động — liên kết với Asset (dụng cụ)."""
@@ -558,14 +569,4 @@ class WorkoutLog(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.gear_used:
-            total_minutes = WorkoutLog.objects.filter(
-                gear_used=self.gear_used
-            ).aggregate(
-                total=Sum('duration_minutes')
-            )['total'] or 0
-            self.gear_used.usage_hours = total_minutes / 60.0
-            if self.gear_used.lifespan_percent and self.gear_used.lifespan_percent >= 80:
-                self.gear_used.condition = 'replace'
-            elif self.gear_used.lifespan_percent and self.gear_used.lifespan_percent >= 50:
-                self.gear_used.condition = 'worn'
-            self.gear_used.save(update_fields=['usage_hours', 'condition'])
+            self.gear_used.recalculate_usage()

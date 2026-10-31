@@ -13,8 +13,9 @@
                     <h5 class="fw-bold mb-0 text-white">{{ s.name }} {% if s.is_current %}<span class="badge bg-success-subtle text-success ms-1">Hiện tại</span>{% endif %}</h5>
                     <small class="text-muted">Năm học: {{ s.year }} &bull; {{ s.get_term_display }}</small>
                 </div>
-                <div class="text-end">
+                <div class="text-end d-flex align-items-center gap-2">
                     <span class="fs-5 fw-bold text-primary">GPA: {{ s.gpa }}</span>
+                    <a href="{% url 'academic:semester_edit' s.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa học kỳ {{ s.name }}"><i class="bi bi-pencil"></i></a>
                 </div>
             </div>
             <div class="table-responsive">
@@ -26,6 +27,7 @@
                             <th class="text-center">Số TC</th>
                             <th class="text-center">Điểm (Hệ 4)</th>
                             <th class="text-center">Trạng thái</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -44,6 +46,7 @@
                                 <span class="badge bg-warning-subtle text-warning">Đang học</span>
                                 {% endif %}
                             </td>
+                            <td class="text-end"><a href="{% url 'academic:course_edit' c.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa môn {{ c.name }}"><i class="bi bi-pencil"></i></a></td>
                         </tr>
                         {% empty %}
                         <tr>

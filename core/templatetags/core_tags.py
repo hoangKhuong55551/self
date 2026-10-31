@@ -1,6 +1,16 @@
+import markdown as md
+import nh3
 from django import template
+from django.utils.safestring import mark_safe
 
 register = template.Library()
+
+# Thẻ/thuộc tính HTML được phép sau khi render Markdown; mọi thứ khác (script, onclick, style...) bị loại
+MARKDOWN_TAGS = {
+    'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'del', 'code', 'pre',
+    'blockquote', 'ul', 'ol', 'li', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+}
+MARKDOWN_ATTRIBUTES = {'a': {'href', 'title'}, 'img': {'src', 'alt', 'title'}, 'code': {'class'}, 'th': {'align'}, 'td': {'align'}}
 
 @register.filter(name='currency_vn')
 def currency_vn(value):
@@ -67,3 +77,14 @@ def minutes_hm(value):
         return value
     hours, minutes = divmod(total, 60)
     return f"{hours}h {minutes:02d}m" if hours else f"{minutes}m"
+
+
+@register.filter(name='markdownify')
+def markdownify(text):
+    """Render Markdown (bảng, code block, xuống dòng) rồi lọc HTML để chống XSS."""
+    html = md.markdown(text or '', extensions=['fenced_code', 'tables', 'sane_lists', 'nl2br'])
+    clean = nh3.clean(
+        html, tags=MARKDOWN_TAGS, attributes=MARKDOWN_ATTRIBUTES,
+        url_schemes={'http', 'https', 'mailto'}, link_rel='noopener noreferrer nofollow',
+    )
+    return mark_safe(clean)

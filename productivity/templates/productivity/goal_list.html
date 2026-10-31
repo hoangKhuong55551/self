@@ -15,8 +15,11 @@
                             <h5 class="fw-bold mb-0 text-white">{{ g.title }}</h5>
                             <small class="text-muted">{{ g.description|default:"Không có mô tả chi tiết" }}</small>
                         </div>
-                        <span class="badge {% if g.status == 'completed' %}bg-success-subtle text-success{% elif g.status == 'in_progress' %}bg-primary-subtle text-primary{% else %}bg-secondary-subtle text-muted{% endif %} fs-6">
-                            {{ g.progress|floatformat:0 }}%
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="badge {% if g.status == 'completed' %}bg-success-subtle text-success{% elif g.status == 'in_progress' %}bg-primary-subtle text-primary{% else %}bg-secondary-subtle text-muted{% endif %} fs-6">
+                                {{ g.progress|floatformat:0 }}%
+                            </span>
+                            <a href="{% url 'productivity:goal_edit' g.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa mục tiêu {{ g.title }}"><i class="bi bi-pencil"></i></a>
                         </span>
                     </div>
 

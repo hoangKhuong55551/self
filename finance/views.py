@@ -4,17 +4,21 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import transaction as db_transaction
 from django.utils import timezone
-from django.db.models import Sum, Q, F
+from django.db.models import Count, Sum, Q, F
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from datetime import timedelta
 from decimal import Decimal
 
-from .models import Wallet, Transaction, Budget, Subscription, WishlistItem, Asset, Category, Transfer, SavingGoal
+from core.editing import edit_page, is_response
+
+from .models import (
+    Wallet, Transaction, Budget, Subscription, WishlistItem, Asset, Category, Transfer, SavingGoal, WorkoutLog,
+)
 from .forms import (
     WalletForm, WalletEditForm, TransactionForm, BudgetForm, SubscriptionForm, WishlistItemForm,
     CategoryForm, TransferForm, SavingGoalForm, SavingGoalAdjustForm, TransactionFilterForm,
-    TransactionImportForm,
+    TransactionImportForm, AssetForm, WorkoutLogForm,
 )
 from .services import (
     attach_budget_forecast, category_spending, check_budget_and_penalize, import_transactions_csv,
@@ -24,22 +28,15 @@ from .services import (
 TRANSACTIONS_PER_PAGE = 25
 
 
-def _edit_page(request, instance, form_class, *, title, back_url, delete_url=None, delete_warning='', **form_kwargs):
-    """
-    Trang sửa dùng chung: GET hiện form, POST hợp lệ thì lưu và trả về instance đã lưu,
-    ngược lại trả về HttpResponse để view trả thẳng cho client.
-    """
-    form = form_class(request.POST or None, instance=instance, **form_kwargs)
-    if request.method == 'POST' and form.is_valid():
-        return form.save()
-    return render(request, 'finance/form_page.html', {
-        'form': form, 'title': title, 'back_url': back_url,
-        'delete_url': delete_url, 'delete_warning': delete_warning,
-    })
+FINANCE_NAV = 'finance/partials/nav.html'
+
+
+def _edit_page(request, instance, form_class, **kwargs):
+    return edit_page(request, instance, form_class, nav=FINANCE_NAV, **kwargs)
 
 
 def _saved(result):
-    return not hasattr(result, 'status_code')
+    return not is_response(result)
 
 
 @login_required
@@ -577,5 +574,112 @@ def wishlist_purchase(request, pk):
 # --- ASSETS ---
 @login_required
 def asset_list(request):
-    assets = Asset.objects.filter(user=request.user)
-    return render(request, 'finance/asset_list.html', {'assets': assets})
+    assets = Asset.objects.filter(user=request.user).select_related('from_wishlist')
+    form = AssetForm(request.POST or None, request.FILES or None)
+    if request.method == 'POST' and form.is_valid():
+        asset = form.save(commit=False)
+        asset.user = request.user
+        asset.save()
+        messages.success(request, f"Đã thêm tài sản {asset.name}.")
+        return redirect('finance:asset_list')
+    total_value = assets.aggregate(total=Sum('purchase_price'))['total'] or Decimal('0')
+    return render(request, 'finance/asset_list.html', {'assets': assets, 'form': form, 'total_value': total_value})
+
+
+@login_required
+def asset_edit(request, pk):
+    asset = get_object_or_404(Asset, pk=pk, user=request.user)
+    result = _edit_page(
+        request, asset, AssetForm,
+        title=f'Sửa tài sản: {asset.name}', back_url=reverse('finance:asset_list'),
+        delete_url=reverse('finance:asset_delete', args=[pk]),
+        delete_warning='Nhật ký vận động dùng dụng cụ này vẫn được giữ, chỉ bỏ liên kết.',
+    )
+    if not _saved(result):
+        return result
+    result.recalculate_usage()  # tuổi thọ có thể vừa thay đổi
+    messages.success(request, f"Đã cập nhật {result.name}.")
+    return redirect('finance:asset_list')
+
+
+@login_required
+@require_POST
+def asset_delete(request, pk):
+    asset = get_object_or_404(Asset, pk=pk, user=request.user)
+    asset.delete()
+    messages.success(request, f"Đã xoá tài sản {asset.name}.")
+    return redirect('finance:asset_list')
+
+
+# --- WORKOUTS ---
+WORKOUT_XP = 10
+
+
+@login_required
+def workout_list(request):
+    logs = WorkoutLog.objects.filter(user=request.user).select_related('gear_used')
+    form = WorkoutLogForm(request.POST or None, user=request.user, initial={'date': timezone.now().date()})
+    if request.method == 'POST' and form.is_valid():
+        log = form.save(commit=False)
+        log.user = request.user
+        log.save()
+        if hasattr(request.user, 'profile'):
+            request.user.profile.award_xp_once(f'workout:{log.pk}', WORKOUT_XP, f'Vận động: {log.get_activity_type_display()}')
+        messages.success(request, f"Đã ghi {log.duration_minutes} phút {log.get_activity_type_display()}. +{WORKOUT_XP} XP")
+        return redirect('finance:workout_list')
+
+    today = timezone.now().date()
+    month_logs = logs.filter(date__year=today.year, date__month=today.month)
+    month_stats = month_logs.aggregate(minutes=Sum('duration_minutes'), km=Sum('distance_km'), kcal=Sum('calories'))
+    choices = dict(WorkoutLog.ACTIVITY_CHOICES)
+    by_activity = [
+        {'label': choices.get(row['activity_type'], row['activity_type']), 'minutes': row['minutes'], 'count': row['count']}
+        for row in month_logs.values('activity_type').annotate(minutes=Sum('duration_minutes'), count=Count('id')).order_by('-minutes')
+    ]
+    # Số ngày liên tiếp có vận động, tính tới hôm nay (hoặc hôm qua nếu hôm nay chưa tập)
+    active_days = set(logs.filter(date__gte=today - timedelta(days=366)).values_list('date', flat=True))
+    streak, day = 0, today if today in active_days else today - timedelta(days=1)
+    while day in active_days:
+        streak += 1
+        day -= timedelta(days=1)
+
+    return render(request, 'finance/workout_list.html', {
+        'logs': logs[:50],
+        'form': form,
+        'month_sessions': month_logs.count(),
+        'month_minutes': month_stats['minutes'] or 0,
+        'month_km': month_stats['km'] or 0,
+        'month_kcal': month_stats['kcal'] or 0,
+        'by_activity': by_activity,
+        'streak': streak,
+        'worn_gear': Asset.objects.filter(user=request.user, condition__in=['worn', 'replace'], workout_logs__isnull=False).distinct(),
+    })
+
+
+@login_required
+def workout_edit(request, pk):
+    log = get_object_or_404(WorkoutLog, pk=pk, user=request.user)
+    old_gear = log.gear_used
+    result = _edit_page(
+        request, log, WorkoutLogForm, user=request.user,
+        title='Sửa buổi vận động', back_url=reverse('finance:workout_list'),
+        delete_url=reverse('finance:workout_delete', args=[pk]),
+    )
+    if not _saved(result):
+        return result
+    if old_gear and old_gear != result.gear_used:
+        old_gear.recalculate_usage()
+    messages.success(request, "Đã cập nhật buổi vận động.")
+    return redirect('finance:workout_list')
+
+
+@login_required
+@require_POST
+def workout_delete(request, pk):
+    log = get_object_or_404(WorkoutLog, pk=pk, user=request.user)
+    gear = log.gear_used
+    log.delete()
+    if gear:
+        gear.recalculate_usage()
+    messages.success(request, "Đã xoá buổi vận động.")
+    return redirect('finance:workout_list')

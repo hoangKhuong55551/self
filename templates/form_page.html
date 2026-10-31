@@ -3,7 +3,7 @@
 {% block title %}{{ title }} | Life OS{% endblock %}
 
 {% block content %}
-{% include "finance/partials/nav.html" %}
+{% if nav %}{% include nav %}{% endif %}
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card p-4">

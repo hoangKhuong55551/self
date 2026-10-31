@@ -1,5 +1,5 @@
 from django import forms
-from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, Transfer, SavingGoal
+from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, Transfer, SavingGoal, Asset, WorkoutLog
 
 
 def date_input():
@@ -311,3 +311,53 @@ class TransactionImportForm(forms.Form):
         if f.size > self.MAX_SIZE:
             raise forms.ValidationError("File tối đa 2MB.")
         return f
+
+
+class AssetForm(forms.ModelForm):
+    class Meta:
+        model = Asset
+        fields = ['name', 'description', 'purchase_price', 'purchase_date', 'condition', 'max_lifespan_hours']
+        labels = {
+            'name': 'Tên tài sản', 'description': 'Mô tả', 'purchase_price': 'Giá mua (VND)',
+            'purchase_date': 'Ngày mua', 'condition': 'Tình trạng', 'max_lifespan_hours': 'Tuổi thọ dự kiến (giờ)',
+        }
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: Giày chạy Nike, Vợt cầu lông...'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'purchase_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '1000'}),
+            'purchase_date': date_input(),
+            'condition': forms.Select(attrs={'class': 'form-select'}),
+            'max_lifespan_hours': forms.NumberInput(attrs={'class': 'form-control', 'step': '10', 'placeholder': 'VD: giày chạy ~ 100 giờ'}),
+        }
+
+
+class WorkoutLogForm(forms.ModelForm):
+    class Meta:
+        model = WorkoutLog
+        fields = ['date', 'activity_type', 'duration_minutes', 'distance_km', 'calories', 'gear_used', 'notes']
+        labels = {
+            'date': 'Ngày', 'activity_type': 'Hoạt động', 'duration_minutes': 'Thời gian (phút)',
+            'distance_km': 'Quãng đường (km)', 'calories': 'Calo', 'gear_used': 'Dụng cụ / giày', 'notes': 'Ghi chú',
+        }
+        widgets = {
+            'date': date_input(),
+            'activity_type': forms.Select(attrs={'class': 'form-select'}),
+            'duration_minutes': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'distance_km': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': 0}),
+            'calories': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'gear_used': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.fields['gear_used'].empty_label = '— Không dùng —'
+        if user:
+            self.fields['gear_used'].queryset = Asset.objects.filter(user=user)
+
+    def clean_duration_minutes(self):
+        minutes = self.cleaned_data['duration_minutes']
+        if not minutes:
+            raise forms.ValidationError("Thời gian phải lớn hơn 0.")
+        return minutes

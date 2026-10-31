@@ -3,50 +3,76 @@
 {% block title %}Tài sản & Dụng cụ | Life OS{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">Tài sản &amp; Dụng cụ (Gear Lifespan)</h3>
-        <span class="text-muted">Theo dõi trang thiết bị sở hữu, giờ sử dụng và độ hao mòn</span>
-    </div>
-</div>
-
-<div class="row g-3">
-    {% for a in assets %}
-    <div class="col-md-4">
-        <div class="card p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="fw-bold mb-0 text-white">{{ a.name }}</h5>
-                <span class="badge {% if a.condition == 'new' %}bg-success-subtle text-success{% elif a.condition == 'good' %}bg-primary-subtle text-primary{% elif a.condition == 'worn' %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
-                    {{ a.get_condition_display }}
-                </span>
+{% include "finance/partials/health_nav.html" %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-end mb-3 gap-2 flex-wrap">
+            <div>
+                <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">Tài sản &amp; Dụng cụ</h3>
+                <span class="text-muted small">Theo dõi đồ đang sở hữu, giờ sử dụng và độ hao mòn</span>
             </div>
-            <div class="text-muted small mb-2">Giá mua: {{ a.purchase_price|floatformat:0 }} đ</div>
-            <p class="small text-muted mb-2">{{ a.description|default:"Không có mô tả chi tiết" }}</p>
+            <span class="small text-muted">Tổng giá trị mua: <strong class="text-white">{{ total_value|currency_vn }} đ</strong></span>
+        </div>
 
-            <div class="mt-auto">
-                <div class="d-flex justify-content-between small text-muted mb-1">
-                    <span>Đã sử dụng:</span>
-                    <strong class="text-white">{{ a.usage_hours|floatformat:1 }}h {% if a.max_lifespan_hours %}/ {{ a.max_lifespan_hours }}h{% endif %}</strong>
+        <div class="row g-3">
+            {% for a in assets %}
+            <div class="col-md-6">
+                <div class="card p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="fw-bold mb-0 text-white">{{ a.name }}</h5>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="badge {% if a.condition == 'new' %}bg-success-subtle text-success{% elif a.condition == 'good' %}bg-primary-subtle text-primary{% elif a.condition == 'worn' %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
+                                {{ a.get_condition_display }}
+                            </span>
+                            <a href="{% url 'finance:asset_edit' a.pk %}" class="row-actions btn btn-sm btn-outline-secondary" aria-label="Sửa {{ a.name }}"><i class="bi bi-pencil"></i></a>
+                        </span>
+                    </div>
+                    <div class="text-muted small mb-2">Giá mua: {{ a.purchase_price|currency_vn }} đ{% if a.purchase_date %} · {{ a.purchase_date|date:"d/m/Y" }}{% endif %}</div>
+                    {% if a.description %}<p class="small text-muted mb-2">{{ a.description }}</p>{% endif %}
+
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Đã sử dụng:</span>
+                            <strong class="text-white">{{ a.usage_hours|floatformat:1 }}h{% if a.max_lifespan_hours %} / {{ a.max_lifespan_hours|floatformat:0 }}h{% endif %}</strong>
+                        </div>
+                        {% if a.lifespan_percent is not None %}
+                        <div class="progress mb-2" style="height: 6px;" role="progressbar" aria-label="{{ a.name }} đã dùng {{ a.lifespan_percent }}% tuổi thọ">
+                            <div class="progress-bar {% if a.needs_replacement %}bg-danger{% elif a.lifespan_percent > 50 %}bg-warning{% else %}bg-success{% endif %}"
+                                 style="width: {{ a.lifespan_percent }}%;"></div>
+                        </div>
+                        {% if a.needs_replacement %}
+                        <small class="text-danger fw-bold"><i class="bi bi-wrench-adjustable me-1"></i> Cần bảo dưỡng hoặc thay mới!</small>
+                        {% endif %}
+                        {% else %}
+                        <small class="text-muted">Đặt tuổi thọ dự kiến để theo dõi độ hao mòn.</small>
+                        {% endif %}
+                        {% if a.from_wishlist %}
+                        <small class="text-muted d-block mt-2"><i class="bi bi-link-45deg"></i> Mua từ Wishlist</small>
+                        {% endif %}
+                    </div>
                 </div>
-                {% if a.lifespan_percent %}
-                <div class="progress mb-2" style="height: 6px;">
-                    <div class="progress-bar {% if a.needs_replacement %}bg-danger{% elif a.lifespan_percent > 50 %}bg-warning{% else %}bg-success{% endif %}"
-                         style="width: {{ a.lifespan_percent }}%;"></div>
-                </div>
-                {% if a.needs_replacement %}
-                <small class="text-danger fw-bold"><i class="bi bi-wrench-adjustable me-1"></i> Cần bảo dưỡng hoặc thay mới!</small>
-                {% endif %}
-                {% endif %}
-                {% if a.from_wishlist %}
-                <small class="text-muted d-block mt-2"><i class="bi bi-link-45deg"></i> Mua từ Wishlist</small>
-                {% endif %}
             </div>
+            {% empty %}
+            <div class="col-12">{% include "partials/empty_state.html" with icon="bi-box-seam" title="Chưa có tài sản nào" text="Thêm đồ đạc, dụng cụ ở bên phải. Món mua từ Wishlist cũng tự động xuất hiện tại đây." %}</div>
+            {% endfor %}
         </div>
     </div>
-    {% empty %}
-    <div class="col-12 text-center py-5 text-muted small">
-        Chưa có tài sản hoặc dụng cụ nào. Mua đồ từ Wishlist sẽ tự động chuyển thành tài sản tại đây!
+
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-plus-circle me-2 text-primary"></i>Thêm tài sản</h5>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100 py-2">Lưu tài sản</button>
+            </form>
+        </div>
     </div>
-    {% endfor %}
 </div>
 {% endblock %}

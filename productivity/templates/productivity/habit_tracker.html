@@ -32,7 +32,7 @@
                             <div class="d-flex align-items-center gap-2">
                                 <span style="font-size: 1.25rem; line-height: 1;">{{ row.habit.icon }}</span>
                                 <div>
-                                    <div class="fw-semibold text-white" style="font-size: 0.82rem;">{{ row.habit.name|truncatechars:20 }}</div>
+                                    <div class="fw-semibold text-white" style="font-size: 0.82rem;">{{ row.habit.name|truncatechars:20 }} <a href="{% url 'productivity:habit_edit' row.habit.pk %}" class="text-muted ms-1" aria-label="Sửa thói quen {{ row.habit.name }}"><i class="bi bi-pencil" style="font-size: 0.7rem;"></i></a></div>
                                     <div class="text-muted" style="font-size: 0.72rem;">
                                         🔥 Streak: <strong class="text-warning">{{ row.streak }}</strong> ngày
                                     </div>

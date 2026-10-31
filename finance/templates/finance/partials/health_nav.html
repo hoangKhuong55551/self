@@ -1,0 +1,8 @@
+{% with current=request.resolver_match.url_name %}
+<nav class="finance-subnav mb-4" aria-label="Vận động và tài sản">
+    <div class="shelf-tabs">
+        <a href="{% url 'finance:workout_list' %}" class="shelf-tab {% if current == 'workout_list' %}active{% endif %}"><i class="bi bi-activity me-1"></i>Vận động</a>
+        <a href="{% url 'finance:asset_list' %}" class="shelf-tab {% if current == 'asset_list' %}active{% endif %}"><i class="bi bi-box-seam me-1"></i>Tài sản &amp; dụng cụ</a>
+    </div>
+</nav>
+{% endwith %}

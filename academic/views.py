@@ -2,6 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, F, FloatField, ExpressionWrapper, Q
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+
+from core.editing import edit_page, is_response
 
 from .models import Semester, Course, Tag, Note, CodeSnippet
 from .forms import SemesterForm, CourseForm, NoteForm, CodeSnippetForm
@@ -135,7 +139,8 @@ def note_list(request):
     query = request.GET.get('q', '')
     tag_id = request.GET.get('tag')
 
-    notes = Note.objects.filter(user=request.user).prefetch_related('tags')
+    show_archived = request.GET.get('archived') == '1'
+    notes = Note.objects.filter(user=request.user, is_archived=show_archived).prefetch_related('tags')
     if query:
         notes = notes.filter(Q(title__icontains=query) | Q(content__icontains=query))
     if tag_id and tag_id.isdigit():
@@ -160,6 +165,7 @@ def note_list(request):
         'tags': tags,
         'form': form,
         'query': query,
+        'show_archived': show_archived,
     })
 
 
@@ -167,6 +173,80 @@ def note_list(request):
 def note_detail(request, pk):
     note = get_object_or_404(Note, pk=pk, user=request.user)
     return render(request, 'academic/note_detail.html', {'note': note})
+
+
+@login_required
+def note_edit(request, pk):
+    note = get_object_or_404(Note, pk=pk, user=request.user)
+    result = edit_page(
+        request, note, NoteForm, user=request.user,
+        title=f'Sửa ghi chú: {note.title}', back_url=reverse('academic:note_detail', args=[pk]),
+        delete_url=reverse('academic:note_delete', args=[pk]),
+    )
+    if is_response(result):
+        return result
+    messages.success(request, "Đã cập nhật ghi chú.")
+    return redirect('academic:note_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def note_delete(request, pk):
+    note = get_object_or_404(Note, pk=pk, user=request.user)
+    note.delete()
+    messages.success(request, f"Đã xoá ghi chú {note.title}.")
+    return redirect('academic:note_list')
+
+
+# --- SỬA / XOÁ HỌC KỲ & MÔN HỌC ---
+@login_required
+def semester_edit(request, pk):
+    sem = get_object_or_404(Semester, pk=pk, user=request.user)
+    result = edit_page(
+        request, sem, SemesterForm, user=request.user,
+        title=f'Sửa học kỳ: {sem.name}', back_url=reverse('academic:gpa_tracker'),
+        delete_url=reverse('academic:semester_delete', args=[pk]),
+        delete_warning=f'Xoá học kỳ sẽ xoá luôn {sem.courses.count()} môn học bên trong.',
+    )
+    if is_response(result):
+        return result
+    if result.is_current:
+        Semester.objects.filter(user=request.user).exclude(pk=pk).update(is_current=False)
+    messages.success(request, f"Đã cập nhật học kỳ {result.name}.")
+    return redirect('academic:gpa_tracker')
+
+
+@login_required
+@require_POST
+def semester_delete(request, pk):
+    sem = get_object_or_404(Semester, pk=pk, user=request.user)
+    sem.delete()
+    messages.success(request, f"Đã xoá học kỳ {sem.name}.")
+    return redirect('academic:gpa_tracker')
+
+
+@login_required
+def course_edit(request, pk):
+    course = get_object_or_404(Course, pk=pk, semester__user=request.user)
+    result = edit_page(
+        request, course, CourseForm, user=request.user,
+        title=f'Sửa môn học: {course.name}', back_url=reverse('academic:gpa_tracker'),
+        delete_url=reverse('academic:course_delete', args=[pk]),
+        delete_warning='Task gắn với môn này vẫn được giữ, chỉ bỏ liên kết môn học.',
+    )
+    if is_response(result):
+        return result
+    messages.success(request, f"Đã cập nhật môn {result.name}.")
+    return redirect('academic:gpa_tracker')
+
+
+@login_required
+@require_POST
+def course_delete(request, pk):
+    course = get_object_or_404(Course, pk=pk, semester__user=request.user)
+    course.delete()
+    messages.success(request, f"Đã xoá môn {course.name}.")
+    return redirect('academic:gpa_tracker')
 
 
 # --- SECOND BRAIN: CODE SNIPPETS ---
@@ -206,3 +286,26 @@ def snippet_list(request):
 def snippet_detail(request, pk):
     snippet = get_object_or_404(CodeSnippet, pk=pk, user=request.user)
     return render(request, 'academic/snippet_detail.html', {'snippet': snippet})
+
+
+@login_required
+def snippet_edit(request, pk):
+    snippet = get_object_or_404(CodeSnippet, pk=pk, user=request.user)
+    result = edit_page(
+        request, snippet, CodeSnippetForm, user=request.user,
+        title=f'Sửa đoạn code: {snippet.title}', back_url=reverse('academic:snippet_detail', args=[pk]),
+        delete_url=reverse('academic:snippet_delete', args=[pk]),
+    )
+    if is_response(result):
+        return result
+    messages.success(request, "Đã cập nhật đoạn code.")
+    return redirect('academic:snippet_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def snippet_delete(request, pk):
+    snippet = get_object_or_404(CodeSnippet, pk=pk, user=request.user)
+    snippet.delete()
+    messages.success(request, f"Đã xoá đoạn code {snippet.title}.")
+    return redirect('academic:snippet_list')

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.db.models import Count
 from django.views.decorators.http import require_POST
@@ -9,8 +10,10 @@ from datetime import timedelta
 import json
 import math
 
+from core.editing import edit_page, is_response
+
 from .models import Goal, Task, Habit, HabitLog, PomodoroSession
-from .forms import GoalForm, TaskForm, HabitForm
+from .forms import GoalForm, TaskForm, HabitForm, HabitEditForm
 
 
 @login_required
@@ -117,7 +120,83 @@ def update_task_status(request, pk):
     return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
 
 
+@login_required
+def goal_edit(request, pk):
+    goal = get_object_or_404(Goal, pk=pk, user=request.user)
+    result = edit_page(
+        request, goal, GoalForm,
+        title=f'Sửa mục tiêu: {goal.title}', back_url=reverse('productivity:goal_list'),
+        delete_url=reverse('productivity:goal_delete', args=[pk]),
+        delete_warning=f'Xoá mục tiêu sẽ xoá luôn {goal.tasks.count()} task bên trong (XP đã nhận vẫn giữ).',
+    )
+    if is_response(result):
+        return result
+    messages.success(request, f"Đã cập nhật mục tiêu {goal.title}.")
+    return redirect('productivity:goal_list')
+
+
+@login_required
+@require_POST
+def goal_delete(request, pk):
+    goal = get_object_or_404(Goal, pk=pk, user=request.user)
+    goal.delete()
+    messages.success(request, f"Đã xoá mục tiêu {goal.title}.")
+    return redirect('productivity:goal_list')
+
+
+@login_required
+def task_edit(request, pk):
+    task = get_object_or_404(Task, pk=pk, goal__user=request.user)
+    old_goal = task.goal
+    result = edit_page(
+        request, task, TaskForm, user=request.user,
+        title=f'Sửa task: {task.title}', back_url=reverse('productivity:kanban_board'),
+        delete_url=reverse('productivity:task_delete', args=[pk]),
+    )
+    if is_response(result):
+        return result
+    # Đổi mục tiêu thì tiến độ của cả mục tiêu cũ và mới đều thay đổi
+    for goal in {old_goal, result.goal}:
+        goal.recalculate_progress()
+    messages.success(request, f"Đã cập nhật task {result.title}.")
+    return redirect('productivity:kanban_board')
+
+
+@login_required
+@require_POST
+def task_delete(request, pk):
+    task = get_object_or_404(Task, pk=pk, goal__user=request.user)
+    goal = task.goal
+    task.delete()
+    goal.recalculate_progress()
+    messages.success(request, f"Đã xoá task {task.title}.")
+    return redirect('productivity:kanban_board')
+
+
 # --- HABITS & HEATMAP ---
+@login_required
+def habit_edit(request, pk):
+    habit = get_object_or_404(Habit, pk=pk, user=request.user)
+    result = edit_page(
+        request, habit, HabitEditForm,
+        title=f'Sửa thói quen: {habit.name}', back_url=reverse('productivity:habit_tracker'),
+        delete_url=reverse('productivity:habit_delete', args=[pk]),
+        delete_warning='Toàn bộ lịch sử check-in của thói quen này sẽ bị xoá. Muốn giữ lịch sử, hãy bỏ chọn "Đang theo dõi".',
+    )
+    if is_response(result):
+        return result
+    messages.success(request, f"Đã cập nhật thói quen {habit.name}.")
+    return redirect('productivity:habit_tracker')
+
+
+@login_required
+@require_POST
+def habit_delete(request, pk):
+    habit = get_object_or_404(Habit, pk=pk, user=request.user)
+    habit.delete()
+    messages.success(request, f"Đã xoá thói quen {habit.name}.")
+    return redirect('productivity:habit_tracker')
+
 @login_required
 def habit_tracker(request):
     habits = Habit.objects.filter(user=request.user)

@@ -18,7 +18,7 @@ from core.exports import export_csv
 from core.models import XPEvent
 from finance.defaults import DEFAULT_CATEGORIES
 from finance.models import (
-    Budget, Category, SavingGoal, Subscription, Transaction, Transfer, Wallet, WishlistItem,
+    Asset, Budget, Category, SavingGoal, Subscription, Transaction, Transfer, Wallet, WishlistItem, WorkoutLog,
 )
 from finance.services import (
     attach_budget_forecast, category_spending, import_transactions_csv, monthly_cashflow,
@@ -504,6 +504,76 @@ class CsvImportTest(FinanceTestCase):
         self.assertFalse(Transaction.objects.exists())
 
 
+class AssetWorkoutTest(FinanceTestCase):
+    def setUp(self):
+        super().setUp()
+        self.shoes = Asset.objects.create(user=self.user, name='Giày chạy', max_lifespan_hours=10)
+
+    def log(self, minutes, gear=None, activity='running'):
+        return self.client.post(reverse('finance:workout_list'), {
+            'date': self.today.isoformat(), 'activity_type': activity, 'duration_minutes': minutes,
+            'distance_km': '5', 'gear_used': (gear or self.shoes).pk, 'notes': '',
+        })
+
+    def test_create_asset(self):
+        self.client.post(reverse('finance:asset_list'), {'name': 'Vợt', 'purchase_price': '800000', 'condition': 'new'})
+        self.assertTrue(Asset.objects.filter(user=self.user, name='Vợt').exists())
+
+    def test_workout_updates_gear_and_awards_xp(self):
+        self.log(300)
+        self.shoes.refresh_from_db()
+        self.assertEqual((self.shoes.usage_hours, self.shoes.condition), (5, 'worn'))
+        log = WorkoutLog.objects.get()
+        self.assertTrue(XPEvent.objects.filter(key=f'workout:{log.pk}').exists())
+
+    def test_delete_workout_gives_hours_back(self):
+        self.log(300)
+        self.log(60)
+        self.client.post(reverse('finance:workout_delete', args=[WorkoutLog.objects.get(duration_minutes=60).pk]))
+        self.shoes.refresh_from_db()
+        self.assertEqual(self.shoes.usage_hours, 5)
+
+    def test_moving_workout_to_other_gear_recalculates_both(self):
+        bike = Asset.objects.create(user=self.user, name='Xe đạp', max_lifespan_hours=1000)
+        self.log(120)
+        log = WorkoutLog.objects.get()
+        self.client.post(reverse('finance:workout_edit', args=[log.pk]), {
+            'date': self.today.isoformat(), 'activity_type': 'cycling', 'duration_minutes': 120, 'gear_used': bike.pk,
+        })
+        self.shoes.refresh_from_db()
+        bike.refresh_from_db()
+        self.assertEqual((self.shoes.usage_hours, bike.usage_hours), (0, 2))
+
+    def test_month_stats_and_streak(self):
+        WorkoutLog.objects.create(user=self.user, activity_type='gym', duration_minutes=45, date=self.today - timedelta(days=1))
+        WorkoutLog.objects.create(user=self.user, activity_type='gym', duration_minutes=30, date=self.today - timedelta(days=2))
+        WorkoutLog.objects.create(user=self.user, activity_type='gym', duration_minutes=30, date=self.today - timedelta(days=4))
+        response = self.client.get(reverse('finance:workout_list'))
+        self.assertEqual(response.context['streak'], 2)
+        self.log(60)
+        self.assertEqual(self.client.get(reverse('finance:workout_list')).context['streak'], 3)
+
+    def test_cannot_use_other_users_gear(self):
+        foreign = Asset.objects.create(user=self.other, name='Lạ')
+        response = self.log(30, gear=foreign)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(WorkoutLog.objects.exists())
+
+    def test_asset_edit_lifespan_updates_condition(self):
+        self.log(300)
+        self.client.post(reverse('finance:asset_edit', args=[self.shoes.pk]), {
+            'name': 'Giày chạy', 'purchase_price': '0', 'condition': 'worn', 'max_lifespan_hours': '6',
+        })
+        self.shoes.refresh_from_db()
+        self.assertEqual(self.shoes.condition, 'replace')
+
+    def test_other_users_asset_and_workout_404(self):
+        foreign_asset = Asset.objects.create(user=self.other, name='X')
+        foreign_log = WorkoutLog.objects.create(user=self.other, activity_type='gym', duration_minutes=10)
+        self.assertEqual(self.client.get(reverse('finance:asset_edit', args=[foreign_asset.pk])).status_code, 404)
+        self.assertEqual(self.client.post(reverse('finance:workout_delete', args=[foreign_log.pk])).status_code, 404)
+
+
 class FinanceStatsTest(FinanceTestCase):
     def test_savings_rate(self):
         self.assertIsNone(savings_rate(Decimal('0'), Decimal('100')))
@@ -535,7 +605,7 @@ class FinanceStatsTest(FinanceTestCase):
 
     def test_all_finance_pages_render(self):
         goal = SavingGoal.objects.create(user=self.user, name='G', target_amount=Decimal('10'))
-        names = ['dashboard', 'wallet_list', 'category_list', 'transaction_list', 'transaction_import',
+        names = ['dashboard', 'wallet_list', 'category_list', 'transaction_list', 'transaction_import', 'workout_list',
                  'transfer_list', 'budget_list', 'subscription_list', 'saving_goal_list', 'wishlist', 'asset_list']
         for name in names:
             self.assertEqual(self.client.get(reverse(f'finance:{name}')).status_code, 200, name)

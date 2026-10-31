@@ -96,7 +96,7 @@
 
                 <li class="nav-category">Sức khoẻ & Media</li>
                 <li>
-                    <a href="{% url 'finance:asset_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'asset_list' %}active{% endif %}">
+                    <a href="{% url 'finance:workout_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'asset_list' or request.resolver_match.url_name == 'workout_list' %}active{% endif %}">
                         <i class="bi bi-activity"></i>
                         <span>Vận động & Tài sản</span>
                     </a>
@@ -306,7 +306,8 @@
             {"title": "Ngân sách", "icon": "bi-pie-chart", "url": "{% url 'finance:budget_list' %}", "keywords": "ngan sach budget"},
             {"title": "Subscriptions", "icon": "bi-arrow-repeat", "url": "{% url 'finance:subscription_list' %}", "keywords": "dang ky dinh ky"},
             {"title": "Wishlist", "icon": "bi-bag-heart", "url": "{% url 'finance:wishlist' %}", "keywords": "mua sam"},
-            {"title": "Tài sản", "icon": "bi-activity", "url": "{% url 'finance:asset_list' %}", "keywords": "tai san asset"},
+            {"title": "Tài sản", "icon": "bi-box-seam", "url": "{% url 'finance:asset_list' %}", "keywords": "tai san asset dung cu"},
+            {"title": "Vận động", "icon": "bi-activity", "url": "{% url 'finance:workout_list' %}", "keywords": "van dong workout tap gym chay bo the duc"},
             {"title": "Hiệu suất", "icon": "bi-check2-square", "url": "{% url 'productivity:dashboard' %}", "keywords": "hieu suat productivity"},
             {"title": "Bảng Kanban", "icon": "bi-kanban", "url": "{% url 'productivity:kanban_board' %}", "keywords": "kanban task cong viec"},
             {"title": "Mục tiêu", "icon": "bi-bullseye", "url": "{% url 'productivity:goal_list' %}", "keywords": "muc tieu goal okr"},

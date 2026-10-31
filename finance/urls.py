@@ -44,4 +44,10 @@ urlpatterns = [
     path('wishlist/<int:pk>/purchase/', views.wishlist_purchase, name='wishlist_purchase'),
 
     path('assets/', views.asset_list, name='asset_list'),
+    path('assets/<int:pk>/edit/', views.asset_edit, name='asset_edit'),
+    path('assets/<int:pk>/delete/', views.asset_delete, name='asset_delete'),
+
+    path('workouts/', views.workout_list, name='workout_list'),
+    path('workouts/<int:pk>/edit/', views.workout_edit, name='workout_edit'),
+    path('workouts/<int:pk>/delete/', views.workout_delete, name='workout_delete'),
 ]
