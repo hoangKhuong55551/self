@@ -22,7 +22,7 @@ def task_status_changed(sender, instance, created, **kwargs):
     Khi Task chuyển sang 'done':
       1. Ghi nhận thời gian hoàn thành
       2. Tính lại progress của Goal cha
-      3. Cộng XP cho user (Gamification)
+      3. Cộng XP cho user (Gamification), mỗi task chỉ một lần
     """
     previous = getattr(instance, '_previous_status', None)
     current = instance.status
@@ -37,7 +37,9 @@ def task_status_changed(sender, instance, created, **kwargs):
 
         xp_reward = _calculate_task_xp(instance)
         if hasattr(instance.goal.user, 'profile'):
-            instance.goal.user.profile.add_xp(xp_reward)
+            instance.goal.user.profile.award_xp_once(
+                f'task:{instance.pk}', xp_reward, f'Hoàn thành task: {instance.title}'
+            )
 
     elif previous == 'done' and current != 'done':
         instance.goal.recalculate_progress()
@@ -54,11 +56,14 @@ def _calculate_task_xp(task):
     return base_xp + quadrant_bonus.get(task.quadrant, 0)
 
 
+HABIT_XP = 10
+
+
 @receiver(post_save, sender=HabitLog)
 def habit_completed_handler(sender, instance, created, **kwargs):
     """
     Khi HabitLog.completed = True:
-      1. Cộng XP
+      1. Cộng XP (mỗi ngày chỉ một lần, kể cả khi bỏ check rồi check lại)
       2. Cập nhật longest_streak
     """
     if not instance.completed:
@@ -67,7 +72,9 @@ def habit_completed_handler(sender, instance, created, **kwargs):
     user = instance.habit.user
     if hasattr(user, 'profile'):
         profile = user.profile
-        profile.add_xp(5)
+        profile.award_xp_once(
+            f'habitlog:{instance.pk}', HABIT_XP, f'Check-in: {instance.habit.name}'
+        )
 
         current = instance.habit.current_streak
         if current > profile.longest_streak:

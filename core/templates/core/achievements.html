@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Thành tích | Life OS{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">🏅 Thành tích</h2>
+        <p class="text-muted mb-0 small">Mở khoá huy hiệu bằng cách hoàn thành task, giữ thói quen, đọc sách... Mỗi huy hiệu thưởng thêm XP.</p>
+    </div>
+    <div class="topbar-chip">
+        <i class="bi bi-award-fill text-warning"></i>
+        <span><strong class="text-white">{{ unlocked_count }}</strong> / {{ total_count }} huy hiệu</span>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    {% for p in progress %}
+    <div class="col-sm-6 col-lg-4 col-xxl-3">
+        <div class="badge-card {% if p.unlocked_at %}is-unlocked{% endif %} tier-{{ p.achievement.tier }}">
+            <div class="badge-medal">
+                <i class="bi {{ p.achievement.icon }}"></i>
+                {% if not p.unlocked_at %}<span class="badge-lock"><i class="bi bi-lock-fill"></i></span>{% endif %}
+            </div>
+            <div class="min-w-0 flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="fw-bold text-white">{{ p.achievement.title }}</div>
+                    {% if p.achievement.xp %}<span class="badge-xp">+{{ p.achievement.xp }} XP</span>{% endif %}
+                </div>
+                <div class="small text-muted mb-2">{{ p.achievement.description }}</div>
+                {% if p.unlocked_at %}
+                <div class="small text-success"><i class="bi bi-check-circle-fill me-1"></i>Mở khoá {{ p.unlocked_at|date:"d/m/Y" }}</div>
+                {% else %}
+                <div class="progress" style="height: 6px;">
+                    <div class="progress-bar" style="width: {{ p.percent }}%;"></div>
+                </div>
+                <div class="small text-dim font-monospace mt-1">{{ p.value }} / {{ p.achievement.target }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="bi bi-clock-history me-2 text-primary"></i>Lịch sử XP gần đây</div>
+    <div class="list-group list-group-flush">
+        {% for e in xp_events %}
+        <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+            <div class="min-w-0">
+                <div class="small fw-semibold text-white text-truncate">{{ e.reason|default:e.key }}</div>
+                <div class="text-dim" style="font-size: 0.72rem;">{{ e.created_at|date:"H:i d/m/Y" }}</div>
+            </div>
+            <span class="badge bg-primary-subtle text-primary font-monospace">+{{ e.amount }} XP</span>
+        </div>
+        {% empty %}
+        <div class="list-group-item text-center text-muted small py-4">Chưa có XP nào được ghi. Hoàn thành một task hoặc check-in thói quen để bắt đầu!</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

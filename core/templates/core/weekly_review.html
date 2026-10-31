@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load core_tags %}
+
+{% block title %}Tổng kết tuần | Life OS{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">🗓️ Tổng kết tuần</h2>
+        <p class="text-muted mb-0 small">
+            {{ week_start|date:"d/m" }} — {{ week_end|date:"d/m/Y" }}{% if is_current_week %} · tuần này{% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="?week={{ prev_week|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i> Tuần trước</a>
+        {% if next_week %}
+        <a href="?week={{ next_week|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">Tuần sau <i class="bi bi-chevron-right"></i></a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- KPI -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">Tiết kiệm</span>
+                <div class="kpi-icon-wrap" style="color: #38bdf8;"><i class="bi bi-piggy-bank"></i></div>
+            </div>
+            <div class="kpi-value {% if savings < 0 %}text-danger{% endif %}">{{ savings|currency_signed_vn }} <small class="fs-6 text-muted">đ</small></div>
+            <div class="small text-muted">Thu {{ income|currency_vn }} · Chi {{ expense|currency_vn }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">Task xong</span>
+                <div class="kpi-icon-wrap" style="color: #34d399;"><i class="bi bi-check2-circle"></i></div>
+            </div>
+            <div class="kpi-value">{{ tasks_done|length }}</div>
+            <div class="small text-muted">{{ focus_hours|float_vn:1 }} giờ tập trung · {{ focus_sessions }} Pomodoro</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">Thói quen</span>
+                <div class="kpi-icon-wrap" style="color: #fbbf24;"><i class="bi bi-fire"></i></div>
+            </div>
+            <div class="kpi-value">{{ habit_rate }}<small class="fs-6 text-muted">%</small></div>
+            <div class="small text-muted">{{ checkins }} lượt check-in</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted text-uppercase small fw-semibold">XP kiếm được</span>
+                <div class="kpi-icon-wrap" style="color: #a78bfa;"><i class="bi bi-stars"></i></div>
+            </div>
+            <div class="kpi-value">+{{ xp_week }}</div>
+            <div class="small text-muted">{{ badges|length }} huy hiệu mới</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Task đã xong -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-trophy me-2 text-success"></i>Việc đã hoàn thành</div>
+            <div class="list-group list-group-flush">
+                {% for t in tasks_done %}
+                <div class="list-group-item py-2">
+                    <div class="small fw-semibold text-white">{{ t.title }}</div>
+                    <div class="text-dim" style="font-size: 0.72rem;">{{ t.goal.title }} · {{ t.completed_at|date:"D d/m" }}</div>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted small py-4">Chưa hoàn thành task nào trong tuần.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 d-flex flex-column gap-3">
+        <!-- Chi tiêu lớn nhất -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-pie-chart me-2 text-info"></i>Chi nhiều nhất</div>
+            <div class="card-body">
+                {% for c in top_expenses %}
+                <div class="d-flex justify-content-between small mb-2">
+                    <span class="text-white">{{ c.category__name|default:"Chung" }}</span>
+                    <span class="font-monospace text-danger">-{{ c.total|currency_vn }} đ</span>
+                </div>
+                {% empty %}
+                <p class="text-muted small mb-0">Không có khoản chi nào.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sách / phim / game xong + huy hiệu -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-collection-play me-2 text-primary"></i>Đã đọc / xem / chơi xong</div>
+            <div class="card-body">
+                {% for m in media_done %}
+                <a href="{% url 'library:item_detail' m.pk %}" class="d-flex align-items-center gap-2 mb-2 text-decoration-none">
+                    <span class="current-thumb shelf-cover--{{ m.media_type }}" style="width: 30px; height: 44px;">{% if m.cover_src %}<img src="{{ m.cover_src }}" alt="">{% else %}<i class="bi {{ m.type_icon }}"></i>{% endif %}</span>
+                    <span class="small text-white">{{ m.title }}</span>
+                    {% if m.rating %}<span class="small text-warning ms-auto">★ {{ m.rating }}</span>{% endif %}
+                </a>
+                {% empty %}
+                <p class="text-muted small mb-0">Chưa hoàn thành mục nào trong tuần.</p>
+                {% endfor %}
+
+                {% if badges %}
+                <hr class="my-3" style="border-color: var(--border-subtle);">
+                <div class="d-flex flex-wrap gap-2">
+                    {% for b in badges %}
+                    <span class="badge bg-warning-subtle text-warning"><i class="bi {{ b.icon }} me-1"></i>{{ b.title }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Suy ngẫm -->
+<div class="card">
+    <div class="card-header"><i class="bi bi-journal-richtext me-2 text-danger"></i>Suy ngẫm cuối tuần</div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <label class="form-label">Tuần này bạn thấy thế nào?</label>
+            <div class="mood-picker mb-3">
+                {% for radio in form.mood %}
+                <label class="mood-option">
+                    {{ radio.tag }}
+                    <span>{{ radio.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label">✅ Điều làm tốt</label>{{ form.went_well }}</div>
+                <div class="col-md-4"><label class="form-label">🔧 Cần cải thiện</label>{{ form.to_improve }}</div>
+                <div class="col-md-4"><label class="form-label">🎯 Trọng tâm tuần sau</label>{{ form.next_focus }}</div>
+            </div>
+            <div class="text-end mt-3">
+                <button type="submit" class="btn btn-primary px-4">Lưu suy ngẫm</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

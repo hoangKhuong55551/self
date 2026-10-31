@@ -16,9 +16,7 @@ XP_REWARDS = {
 @receiver(pre_save, sender=MediaItem)
 def media_item_status_changed(sender, instance, **kwargs):
     """
-    Khi MediaItem chuyển sang 'done':
-      1. Ghi nhận ngày hoàn thành, đẩy tiến độ lên 100%
-      2. Cộng XP cho user (chỉ lần đầu chuyển sang done)
+    Khi MediaItem chuyển sang 'done': ghi nhận ngày hoàn thành, đẩy tiến độ lên 100%.
     Khi chuyển sang 'in_progress' lần đầu: ghi nhận ngày bắt đầu.
     """
     previous = None
@@ -35,13 +33,15 @@ def media_item_status_changed(sender, instance, **kwargs):
             instance.finished_on = today
         if instance.progress_total:
             instance.progress_current = instance.progress_total
-        instance._award_xp = True
 
 
 @receiver(post_save, sender=MediaItem)
 def media_item_award_xp(sender, instance, **kwargs):
-    if not getattr(instance, '_award_xp', False):
+    # Mỗi mục chỉ được thưởng một lần, kể cả khi đổi trạng thái qua lại
+    if instance.status != MediaItem.Status.DONE:
         return
-    instance._award_xp = False
     if hasattr(instance.user, 'profile'):
-        instance.user.profile.add_xp(XP_REWARDS.get(instance.media_type, 10))
+        instance.user.profile.award_xp_once(
+            f'media:{instance.pk}', XP_REWARDS.get(instance.media_type, 10),
+            f'Hoàn thành: {instance.title}'
+        )

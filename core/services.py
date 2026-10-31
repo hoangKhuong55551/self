@@ -132,3 +132,142 @@ def get_weekly_dashboard(user):
         'week_start': week_start,
         'week_end': week_end,
     }
+
+
+def global_search(user, query, per_type=5):
+    """
+    Tìm kiếm xuyên module cho thanh Ctrl+K.
+    Trả về list dict: type, title, subtitle, url, icon.
+    """
+    from django.urls import reverse
+    from finance.models import Transaction, WishlistItem
+    from productivity.models import Goal, Task
+    from academic.models import Note, CodeSnippet
+    from library.models import MediaItem
+
+    query = (query or '').strip()
+    if len(query) < 2:
+        return []
+
+    results = []
+
+    for task in Task.objects.filter(goal__user=user, title__icontains=query).select_related('goal')[:per_type]:
+        results.append({
+            'type': 'Task', 'icon': 'bi-check2-square',
+            'title': task.title, 'subtitle': f'{task.get_status_display()} • {task.goal.title}',
+            'url': reverse('productivity:kanban_board'),
+        })
+
+    for goal in Goal.objects.filter(user=user, title__icontains=query)[:per_type]:
+        results.append({
+            'type': 'Mục tiêu', 'icon': 'bi-bullseye',
+            'title': goal.title, 'subtitle': f'{goal.progress:.0f}% hoàn thành',
+            'url': reverse('productivity:goal_list'),
+        })
+
+    for note in Note.objects.filter(user=user).filter(Q(title__icontains=query) | Q(content__icontains=query))[:per_type]:
+        results.append({
+            'type': 'Ghi chú', 'icon': 'bi-journal-text',
+            'title': note.title, 'subtitle': note.updated_at.strftime('%d/%m/%Y'),
+            'url': reverse('academic:note_detail', args=[note.pk]),
+        })
+
+    for snippet in CodeSnippet.objects.filter(user=user, title__icontains=query)[:per_type]:
+        results.append({
+            'type': 'Code', 'icon': 'bi-code-slash',
+            'title': snippet.title, 'subtitle': snippet.get_language_display(),
+            'url': reverse('academic:snippet_detail', args=[snippet.pk]),
+        })
+
+    for item in MediaItem.objects.filter(user=user).filter(Q(title__icontains=query) | Q(creator__icontains=query))[:per_type]:
+        results.append({
+            'type': 'Thư viện', 'icon': item.type_icon,
+            'title': item.title, 'subtitle': f'{item.status_label}{" • " + item.creator if item.creator else ""}',
+            'url': reverse('library:item_detail', args=[item.pk]),
+        })
+
+    for txn in Transaction.objects.filter(user=user, note__icontains=query).select_related('wallet')[:per_type]:
+        sign = '+' if txn.transaction_type == 'income' else '-'
+        results.append({
+            'type': 'Giao dịch', 'icon': 'bi-receipt',
+            'title': txn.note, 'subtitle': f'{sign}{txn.amount:,.0f} đ • {txn.date:%d/%m/%Y}'.replace(',', '.'),
+            'url': reverse('finance:transaction_list'),
+        })
+
+    for wish in WishlistItem.objects.filter(user=user, name__icontains=query)[:per_type]:
+        results.append({
+            'type': 'Wishlist', 'icon': 'bi-bag-heart',
+            'title': wish.name, 'subtitle': f'{wish.price:,.0f} đ'.replace(',', '.'),
+            'url': reverse('finance:wishlist'),
+        })
+
+    return results
+
+
+def get_week_review(user, week_start):
+    """Số liệu tổng kết cho tuần bắt đầu từ `week_start` (thứ Hai)."""
+    from finance.models import Transaction
+    from productivity.models import Task, PomodoroSession, HabitLog, Habit
+    from library.models import MediaItem
+    from .models import XPEvent, UserAchievement
+    from .achievements import ACHIEVEMENTS_BY_CODE
+
+    week_end = week_start + timedelta(days=6)
+    days = [week_start, week_end]
+
+    txns = Transaction.objects.filter(user=user, date__range=days)
+    money = txns.aggregate(
+        income=Sum('amount', filter=Q(transaction_type='income')),
+        expense=Sum('amount', filter=Q(transaction_type='expense')),
+    )
+    income = money['income'] or Decimal('0')
+    expense = money['expense'] or Decimal('0')
+    top_expenses = (
+        txns.filter(transaction_type='expense')
+        .values('category__name')
+        .annotate(total=Sum('amount'))
+        .order_by('-total')[:4]
+    )
+
+    tasks_done = Task.objects.filter(
+        goal__user=user, status='done', completed_at__date__range=days
+    ).select_related('goal')
+
+    focus = PomodoroSession.objects.filter(
+        task__goal__user=user, completed=True, start_time__date__range=days
+    ).aggregate(sessions=Count('id'), minutes=Sum('duration_minutes'))
+
+    habit_count = Habit.objects.filter(user=user).count()
+    checkins = HabitLog.objects.filter(habit__user=user, completed=True, date__range=days).count()
+    habit_rate = round(checkins / (habit_count * 7) * 100) if habit_count else 0
+
+    media_done = MediaItem.objects.filter(user=user, status='done', finished_on__range=days)
+
+    xp_week = XPEvent.objects.filter(
+        user=user, created_at__date__range=days
+    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    badges = [
+        ACHIEVEMENTS_BY_CODE[code]
+        for code in UserAchievement.objects.filter(
+            user=user, unlocked_at__date__range=days
+        ).values_list('code', flat=True)
+        if code in ACHIEVEMENTS_BY_CODE
+    ]
+
+    return {
+        'week_start': week_start,
+        'week_end': week_end,
+        'income': income,
+        'expense': expense,
+        'savings': income - expense,
+        'top_expenses': top_expenses,
+        'tasks_done': tasks_done,
+        'focus_sessions': focus['sessions'] or 0,
+        'focus_hours': round((focus['minutes'] or 0) / 60, 1),
+        'checkins': checkins,
+        'habit_rate': habit_rate,
+        'media_done': media_done,
+        'xp_week': xp_week,
+        'badges': badges,
+    }

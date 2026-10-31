@@ -119,7 +119,7 @@
                     </div>
                 </div>
 
-                <div style="height: 190px; position: relative;">
+                <div class="chart-box" style="height: 190px;">
                     <canvas id="weeklyFinanceChart"></canvas>
                 </div>
 
@@ -282,8 +282,9 @@
                 </a>
             </div>
             {% empty %}
-            <div class="col-12 text-center text-muted small py-3">
-                Chưa có sách, phim hay game nào đang theo dõi. <a href="{% url 'library:shelf' %}" class="text-primary">Mở Thư viện</a>
+            <div class="col-12">
+                {% url 'library:shelf' as shelf_url %}
+                {% include "partials/empty_state.html" with icon="bi-book" title="Chưa đọc, xem hay chơi gì" text="Thêm sách, phim hoặc game để theo dõi tiến độ ngay trên Dashboard." cta_url=shelf_url cta_label="Mở Thư viện" %}
             </div>
             {% endfor %}
         </div>
@@ -335,12 +336,10 @@ document.addEventListener('DOMContentLoaded', function () {
             scales: {
                 x: {
                     grid: { display: false },
-                    ticks: { color: '#94a3b8', font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 } }
+                    ticks: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 } }
                 },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
                     ticks: {
-                        color: '#94a3b8',
                         font: { size: 11 },
                         callback: function(val) {
                             return (val >= 1000000) ? (val / 1000000) + 'M' : (val >= 1000 ? (val / 1000) + 'k' : val);
