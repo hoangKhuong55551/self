@@ -4,8 +4,8 @@ from django.utils import timezone
 from decimal import Decimal
 from datetime import timedelta
 
-from finance.models import Wallet, Category, Transaction, Budget, Subscription, WishlistItem, Asset
-from productivity.models import Goal, Task, Habit, HabitLog, PomodoroSession
+from finance.models import Wallet, Category, Transaction, Budget, Subscription, WishlistItem
+from productivity.models import Goal, Task, Habit, HabitLog
 from academic.models import Semester, Course, Tag, Note, CodeSnippet
 
 User = get_user_model()

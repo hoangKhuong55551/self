@@ -1,5 +1,5 @@
 from django import forms
-from .models import Goal, Task, Habit, PomodoroSession
+from .models import Goal, Task, Habit
 
 class GoalForm(forms.ModelForm):
     class Meta:

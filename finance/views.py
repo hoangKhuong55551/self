@@ -5,8 +5,8 @@ from django.utils import timezone
 from django.db.models import Sum, Q, F
 from decimal import Decimal
 
-from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, Asset
-from .forms import WalletForm, TransactionForm, CategoryForm, BudgetForm, SubscriptionForm, WishlistItemForm
+from .models import Wallet, Transaction, Budget, Subscription, WishlistItem, Asset
+from .forms import WalletForm, TransactionForm, BudgetForm, SubscriptionForm, WishlistItemForm
 
 
 @login_required

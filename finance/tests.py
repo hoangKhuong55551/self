@@ -2,7 +2,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from decimal import Decimal
-from finance.models import Wallet, Category, Transaction, WishlistItem, Subscription, Budget
+from finance.models import Wallet, Category, WishlistItem
 
 User = get_user_model()
 

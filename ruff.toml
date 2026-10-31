@@ -1,0 +1,6 @@
+line-length = 120
+extend-exclude = ["*/migrations/*", "staticfiles", "media"]
+
+[lint]
+# Chỉ bắt lỗi thật (pyflakes + lỗi cú pháp), không ép style
+select = ["E9", "F"]

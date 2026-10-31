@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 from finance.models import Wallet, WishlistItem, Transaction, Asset
-from productivity.models import Goal, Task, Habit, HabitLog
+from productivity.models import Goal, Task, Habit
 from core.models import UserProfile
 
 User = get_user_model()
@@ -53,7 +53,7 @@ class CrossModuleIntegrationTest(TestCase):
         """Kiểm tra Liên kết 3: Task Done -> Recalculate Goal Progress + Cộng XP."""
         goal = Goal.objects.create(user=self.user, title='Hoàn thành Đồ án Django')
         task1 = Task.objects.create(goal=goal, title='Thiết kế CSDL', status='todo', quadrant='do')
-        task2 = Task.objects.create(goal=goal, title='Xây dựng Frontend', status='todo', quadrant='schedule')
+        Task.objects.create(goal=goal, title='Xây dựng Frontend', status='todo', quadrant='schedule')
 
         self.assertEqual(goal.progress, 0)
         initial_xp = self.user.profile.xp
@@ -75,7 +75,7 @@ class XPLedgerTest(TestCase):
     """Sổ XP: mỗi nguồn thưởng chỉ được cộng một lần."""
 
     def setUp(self):
-        from productivity.models import Goal, Task, Habit
+        from productivity.models import Goal, Task
         self.user = User.objects.create_user(username='xp_farmer', password='password123')
         self.goal = Goal.objects.create(user=self.user, title='Goal')
         self.task = Task.objects.create(goal=self.goal, title='Task', quadrant='do')

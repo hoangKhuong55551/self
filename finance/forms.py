@@ -1,5 +1,5 @@
 from django import forms
-from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, SavingGoal, Asset
+from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem
 
 class WalletForm(forms.ModelForm):
     class Meta:

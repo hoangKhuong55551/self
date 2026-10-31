@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db.models import Sum, F, FloatField, ExpressionWrapper, Q
 
 from .models import Semester, Course, Tag, Note, CodeSnippet
-from .forms import SemesterForm, CourseForm, TagForm, NoteForm, CodeSnippetForm
+from .forms import SemesterForm, CourseForm, NoteForm, CodeSnippetForm
 
 
 @login_required
