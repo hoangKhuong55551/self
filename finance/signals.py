@@ -4,7 +4,8 @@ from django.db import transaction as db_transaction
 from django.db.models import F
 from django.utils import timezone
 
-from .models import WishlistItem, Transaction, Asset, Wallet, Budget
+from .models import WishlistItem, Transaction, Asset, Wallet
+from .services import check_budget_and_penalize
 
 
 @receiver(pre_save, sender=WishlistItem)
@@ -64,24 +65,4 @@ def wishlist_purchased_handler(sender, instance, created, **kwargs):
             from_wishlist=instance,
         )
 
-        _check_budget_and_penalize(instance.user, txn)
-
-
-def _check_budget_and_penalize(user, transaction):
-    if transaction.transaction_type != 'expense' or not transaction.category:
-        return
-
-    budget = Budget.objects.filter(
-        user=user,
-        category=transaction.category,
-        month=transaction.date.month,
-        year=transaction.date.year,
-    ).first()
-
-    if budget and budget.is_over_budget:
-        overspent_ratio = float(
-            (budget.spent - budget.amount) / budget.amount
-        )
-        hp_loss = min(int(overspent_ratio * 20), 30)
-        if hp_loss > 0 and hasattr(user, 'profile'):
-            user.profile.lose_hp(hp_loss)
+        check_budget_and_penalize(instance.user, txn)

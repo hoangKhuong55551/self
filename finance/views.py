@@ -3,10 +3,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Sum, Q, F
+from django.views.decorators.http import require_POST
 from decimal import Decimal
 
 from .models import Wallet, Transaction, Budget, Subscription, WishlistItem, Asset
 from .forms import WalletForm, TransactionForm, BudgetForm, SubscriptionForm, WishlistItemForm
+from .services import check_budget_and_penalize
 
 
 @login_required
@@ -65,7 +67,7 @@ def finance_dashboard(request):
 def wallet_list(request):
     wallets = Wallet.objects.filter(user=request.user)
     if request.method == 'POST':
-        form = WalletForm(request.POST)
+        form = WalletForm(request.POST, user=request.user)
         if form.is_valid():
             wallet = form.save(commit=False)
             wallet.user = request.user
@@ -73,7 +75,7 @@ def wallet_list(request):
             messages.success(request, f"Đã thêm ví {wallet.name} thành công!")
             return redirect('finance:wallet_list')
     else:
-        form = WalletForm()
+        form = WalletForm(user=request.user)
 
     return render(request, 'finance/wallet_list.html', {'wallets': wallets, 'form': form})
 
@@ -95,6 +97,7 @@ def transaction_list(request):
             # Cập nhật số dư ví
             delta = txn.amount if txn.transaction_type == 'income' else -txn.amount
             Wallet.objects.filter(pk=txn.wallet_id).update(balance=F('balance') + delta)
+            check_budget_and_penalize(request.user, txn)
 
             messages.success(request, "Đã ghi nhận giao dịch thành công!")
             return redirect('finance:transaction_list')
@@ -165,6 +168,7 @@ def wishlist_view(request):
 
 
 @login_required
+@require_POST
 def wishlist_purchase(request, pk):
     """Xử lý hành động bấm MUA: kích hoạt Signal tạo giao dịch + tạo Asset."""
     item = get_object_or_404(WishlistItem, pk=pk, user=request.user)

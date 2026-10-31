@@ -12,6 +12,17 @@ class WalletForm(forms.ModelForm):
             'icon': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'wallet, cash, credit-card...'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        # Ràng buộc unique (user, name) không được form tự kiểm vì 'user' không nằm trong fields
+        name = self.cleaned_data['name']
+        if self.user and Wallet.objects.filter(user=self.user, name=name).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Bạn đã có ví với tên này.")
+        return name
+
 
 class TransactionForm(forms.ModelForm):
     class Meta:
@@ -58,10 +69,22 @@ class BudgetForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        if user:
-            self.fields['category'].queryset = Category.objects.filter(user=user, type='expense')
+        if self.user:
+            self.fields['category'].queryset = Category.objects.filter(user=self.user, type='expense')
+
+    def clean(self):
+        cleaned = super().clean()
+        exists = self.user and Budget.objects.filter(
+            user=self.user,
+            category=cleaned.get('category'),
+            month=cleaned.get('month'),
+            year=cleaned.get('year'),
+        ).exclude(pk=self.instance.pk).exists()
+        if exists:
+            raise forms.ValidationError("Danh mục này đã có ngân sách cho tháng đã chọn.")
+        return cleaned
 
 
 class SubscriptionForm(forms.ModelForm):
