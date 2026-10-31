@@ -1,0 +1,29 @@
+{% load static %}<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mất kết nối | Life OS</title>
+    <style>
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 1.5rem;
+               font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #f1f5f9;
+               background: radial-gradient(40vmax 40vmax at 15% 20%, rgba(99,102,241,.35), transparent 70%),
+                           radial-gradient(40vmax 40vmax at 85% 85%, rgba(217,70,239,.25), transparent 70%), #070b1a; }
+        .box { max-width: 380px; text-align: center; padding: 2rem; border-radius: 24px;
+               background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(18px); }
+        img { width: 64px; height: 64px; border-radius: 16px; }
+        h1 { font-size: 1.3rem; margin: 1rem 0 .5rem; }
+        p { color: #a5b0c6; font-size: .9rem; line-height: 1.6; }
+        button { margin-top: .5rem; padding: .6rem 1.4rem; border: 0; border-radius: 12px; color: #fff; font-weight: 600;
+                 background: linear-gradient(135deg, #6366f1, #8b5cf6 55%, #d946ef); cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <img src="{% static 'icons/icon-192.png' %}" alt="">
+        <h1>Bạn đang offline</h1>
+        <p>Không kết nối được tới Life OS. Những trang bạn đã mở gần đây vẫn xem được; kết nối lại để cập nhật dữ liệu.</p>
+        <button onclick="location.reload()">Thử lại</button>
+    </div>
+</body>
+</html>
