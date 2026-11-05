@@ -127,6 +127,46 @@ class BudgetTest(TestCase):
             'amount': str(amount), 'date': (day or self.today).isoformat(),
         })
 
+    def test_with_spent_matches_property_and_avoids_n_plus_one(self):
+        self._spend(400)
+        for i in range(4):
+            cat = Category.objects.create(user=self.user, name=f'Danh mục {i}', type='expense')
+            Budget.objects.create(user=self.user, category=cat, month=self.today.month, year=self.today.year,
+                                  amount=Decimal('100'))
+        qs = Budget.objects.filter(user=self.user).select_related('category').with_spent()
+        with self.assertNumQueries(1):
+            budgets = list(qs)
+            for b in budgets:
+                b.spent, b.remaining, b.percent_used, b.is_over_budget
+        by_cat = {b.category_id: b.spent for b in budgets}
+        self.assertEqual(by_cat[self.food.pk], Decimal('400'))
+        self.assertEqual(sum(by_cat.values()), Decimal('400'))
+
+    def test_spent_is_computed_once_per_instance(self):
+        self._spend(400)
+        budget = Budget.objects.get(pk=self.budget.pk)
+        with self.assertNumQueries(1):
+            budget.spent, budget.remaining, budget.percent_used, budget.is_over_budget
+        self._spend(100)
+        budget.refresh_spent()
+        self.assertEqual(budget.spent, Decimal('500'))
+
+    def test_budget_list_query_count_does_not_grow_with_budgets(self):
+        def count_queries():
+            from django.db import connection
+            from django.test.utils import CaptureQueriesContext
+            with CaptureQueriesContext(connection) as ctx:
+                self.assertEqual(self.client.get(reverse('finance:budget_list')).status_code, 200)
+            return len(ctx)
+
+        count_queries()  # lượt đầu có thêm truy vấn kiểm tra subscription mỗi ngày của middleware
+        before = count_queries()
+        for i in range(5):
+            cat = Category.objects.create(user=self.user, name=f'Thêm {i}', type='expense')
+            Budget.objects.create(user=self.user, category=cat, month=self.today.month, year=self.today.year,
+                                  amount=Decimal('100'))
+        self.assertEqual(count_queries(), before)
+
     def test_spent_only_counts_current_month(self):
         self._spend(400)
         self._spend(9999, day=self.today - relativedelta(months=1))

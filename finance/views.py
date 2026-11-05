@@ -11,6 +11,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from core.editing import edit_page, is_response
+from core.notifications import invalidate_notifications
 
 from .models import (
     Wallet, Transaction, Budget, Subscription, WishlistItem, Asset, Category, Transfer, SavingGoal, WorkoutLog,
@@ -66,7 +67,7 @@ def finance_dashboard(request):
         user=request.user,
         month=today.month,
         year=today.year
-    ).select_related('category'), today)
+    ).select_related('category').with_spent(), today)
 
     subscriptions = Subscription.objects.filter(
         user=request.user,
@@ -333,7 +334,7 @@ def budget_list(request):
         user=request.user,
         year=today.year,
         month=today.month
-    ).select_related('category'), today)
+    ).select_related('category').with_spent(), today)
 
     if request.method == 'POST':
         form = BudgetForm(request.POST, user=request.user)
@@ -386,6 +387,7 @@ def budget_copy_last_month(request):
         if b.category_id not in existing
     ]
     Budget.objects.bulk_create(copied)
+    invalidate_notifications(request.user.pk)  # bulk_create không gửi signal
     messages.success(request, f"Đã sao chép {len(copied)} hạn mức từ tháng {last:%m/%Y}.")
     return redirect('finance:budget_list')
 

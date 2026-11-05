@@ -1,4 +1,6 @@
 from django import forms
+
+from core.forms import HttpsURLField
 from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, Transfer, SavingGoal, Asset, WorkoutLog
 
 
@@ -175,6 +177,7 @@ class BudgetForm(forms.ModelForm):
 class SubscriptionForm(forms.ModelForm):
     class Meta:
         model = Subscription
+        field_classes = {'url': HttpsURLField}
         fields = ['name', 'amount', 'wallet', 'category', 'billing_cycle', 'start_date', 'next_billing_date', 'url', 'note']
         labels = {
             'name': 'Tên dịch vụ', 'amount': 'Chi phí (VND)', 'wallet': 'Ví thanh toán', 'category': 'Danh mục',
@@ -204,6 +207,7 @@ class SubscriptionForm(forms.ModelForm):
 class WishlistItemForm(forms.ModelForm):
     class Meta:
         model = WishlistItem
+        field_classes = {'url': HttpsURLField}
         fields = ['name', 'price', 'priority', 'wallet', 'saving_goal', 'target_date', 'url', 'description']
         labels = {
             'name': 'Tên món đồ', 'price': 'Giá (VND)', 'priority': 'Mức ưu tiên', 'wallet': 'Ví thanh toán',

@@ -128,9 +128,19 @@ LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
+# Cache trong bộ nhớ tiến trình (đủ cho 1 server; khi chạy nhiều worker nên đổi sang Redis)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'lifeos',
+    }
+}
+
 # Băm mật khẩu nhanh khi chạy test (không dùng cho môi trường thật)
 if 'test' in sys.argv[1:2]:
     PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+    # DB test rollback sau mỗi test nhưng cache thì không, nên tắt cache để test không ảnh hưởng nhau
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}}
 
 # Bảo mật khi chạy production (DEBUG=False)
 if not DEBUG:

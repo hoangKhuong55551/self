@@ -7,4 +7,6 @@ class CoreConfig(AppConfig):
     verbose_name = 'Hệ thống lõi'
 
     def ready(self):
-        import core.signals  # noqa: F401
+        import core.signals
+
+        core.signals.connect_notification_signals()

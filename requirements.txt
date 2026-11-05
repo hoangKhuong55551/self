@@ -1,6 +1,7 @@
-Django>=4.2,<5.0
-python-dateutil>=2.8.2
-Pillow>=10.0.0
-python-dotenv>=1.0
-Markdown>=3.5
-nh3>=0.2
+# Django 5.2 LTS (hỗ trợ bảo mật tới 04/2028)
+Django>=5.2.19,<5.3
+python-dateutil>=2.8.2,<4
+Pillow>=10.0.0,<13
+python-dotenv>=1.0,<2
+Markdown>=3.5,<4
+nh3>=0.2,<0.4

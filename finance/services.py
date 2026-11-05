@@ -15,6 +15,8 @@ from django.db.models import F, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
+from core.notifications import invalidate_notifications
+
 from .models import Budget, Category, Transaction, Wallet
 
 # Giới hạn số kỳ bù mỗi lần chạy, tránh vòng lặp vô hạn với dữ liệu hỏng
@@ -31,7 +33,7 @@ def check_budget_and_penalize(user, txn):
         category_id=txn.category_id,
         month=txn.date.month,
         year=txn.date.year,
-    ).first()
+    ).with_spent().first()
 
     if budget and budget.is_over_budget:
         overspent_ratio = float((budget.spent - budget.amount) / budget.amount)
@@ -315,5 +317,7 @@ def import_transactions_csv(user, wallet, data):
     with db_transaction.atomic():
         Transaction.objects.bulk_create(to_create)
         wallet.recalculate_balance()
+    # bulk_create không gửi signal nên tự xoá cache chuông nhắc (ngân sách có thể đã vượt)
+    invalidate_notifications(user.pk)
     result['created'] = len(to_create)
     return result

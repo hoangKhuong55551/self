@@ -44,7 +44,7 @@ def get_weekly_dashboard(user):
         user=user,
         month=today.month,
         year=today.year
-    ).select_related('category')
+    ).select_related('category').with_spent()
 
     overbudget_categories = [b for b in current_budgets if b.is_over_budget]
 

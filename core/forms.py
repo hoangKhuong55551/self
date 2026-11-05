@@ -6,6 +6,14 @@ from .models import WeeklyReflection
 
 User = get_user_model()
 
+
+class HttpsURLField(forms.URLField):
+    """URL nhập thiếu scheme sẽ được hiểu là https:// (mặc định của Django 6.0)."""
+
+    def __init__(self, *, assume_scheme='https', **kwargs):
+        super().__init__(assume_scheme=assume_scheme, **kwargs)
+
+
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}))
     first_name = forms.CharField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ và tên đệm'}))

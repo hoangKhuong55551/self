@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from decimal import Decimal
@@ -200,6 +200,55 @@ class NotificationsTest(TestCase):
         self.assertIn('Nộp báo cáo', titles)
         self.assertNotIn('Đã xong rồi', titles)
         self.assertContains(response, 'Trễ hạn 2 ngày')
+
+
+@override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                                       'LOCATION': 'notifications-test'}})
+class NotificationsCacheTest(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = User.objects.create_user(username='cached', password='password123')
+        self.goal = Goal.objects.create(user=self.user, title='G')
+
+    def _titles(self):
+        from core.notifications import get_notifications
+        return [n['title'] for n in get_notifications(self.user)[0]]
+
+    def test_second_call_hits_cache(self):
+        from core.notifications import get_notifications
+        get_notifications(self.user)
+        with self.assertNumQueries(0):
+            get_notifications(self.user)
+
+    def test_task_changes_invalidate_cache(self):
+        from django.utils import timezone
+        self.assertEqual(self._titles(), [])
+        task = Task.objects.create(goal=self.goal, title='Hạn hôm nay', due_date=timezone.localdate())
+        self.assertIn('Hạn hôm nay', self._titles())
+        task.status = 'done'
+        task.save()
+        self.assertNotIn('Hạn hôm nay', self._titles())
+
+    def test_overspending_invalidates_cache(self):
+        from django.utils import timezone
+        from finance.models import Budget, Category
+        today = timezone.localdate()
+        wallet = Wallet.objects.create(user=self.user, name='Ví', balance=Decimal('1000000'))
+        food = Category.objects.create(user=self.user, name='Ăn', type='expense')
+        Budget.objects.create(user=self.user, category=food, month=today.month, year=today.year, amount=Decimal('100'))
+        self.assertEqual(self._titles(), [])
+        Transaction.objects.create(user=self.user, wallet=wallet, category=food, transaction_type='expense',
+                                   amount=Decimal('500'), date=today)
+        self.assertIn('Vượt ngân sách Ăn', self._titles())
+
+    def test_cache_is_per_user(self):
+        from django.utils import timezone
+        other = User.objects.create_user(username='other', password='password123')
+        Task.objects.create(goal=self.goal, title='Của tôi', due_date=timezone.localdate())
+        self.assertIn('Của tôi', self._titles())
+        from core.notifications import get_notifications
+        self.assertEqual(get_notifications(other)[0], [])
 
 
 class ExportTest(TestCase):

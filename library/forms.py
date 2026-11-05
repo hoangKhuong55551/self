@@ -1,4 +1,6 @@
 from django import forms
+
+from core.forms import HttpsURLField
 from .models import MediaItem, LibraryGoal
 
 RATING_CHOICES = [('', '— Chưa chấm —')] + [(i, '★' * i) for i in range(1, 6)]
@@ -12,6 +14,7 @@ class MediaItemForm(forms.ModelForm):
 
     class Meta:
         model = MediaItem
+        field_classes = {'cover_url': HttpsURLField}
         fields = [
             'media_type', 'title', 'creator', 'genre', 'status',
             'progress_current', 'progress_total', 'rating',
@@ -46,6 +49,7 @@ class QuickAddForm(forms.ModelForm):
 
     class Meta:
         model = MediaItem
+        field_classes = MediaItemForm.Meta.field_classes
         fields = ['media_type', 'title', 'creator', 'genre', 'status', 'progress_total', 'cover_url']
         widgets = {**MediaItemForm.Meta.widgets, 'genre': forms.HiddenInput()}
 

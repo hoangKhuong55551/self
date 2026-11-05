@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 from django.db.models import Sum
+from django.db.models.functions import Coalesce
 from decimal import Decimal
 
 
@@ -194,6 +195,21 @@ class Transfer(models.Model):
         return f"{self.from_wallet.name} → {self.to_wallet.name}: {self.amount:,.0f}"
 
 
+class BudgetQuerySet(models.QuerySet):
+    def with_spent(self):
+        """Tính sẵn tổng chi của mỗi ngân sách trong 1 truy vấn (tránh N+1 khi hiển thị danh sách)."""
+        spent = Transaction.objects.filter(
+            user=models.OuterRef('user'),
+            category=models.OuterRef('category'),
+            transaction_type='expense',
+            date__month=models.OuterRef('month'),
+            date__year=models.OuterRef('year'),
+        ).order_by().values('category').annotate(total=Sum('amount')).values('total')
+        return self.annotate(
+            spent_total=Coalesce(models.Subquery(spent), Decimal('0'), output_field=self.model._meta.get_field('amount'))
+        )
+
+
 class Budget(models.Model):
     """Hạn mức chi tiêu theo danh mục, theo tháng."""
     user = models.ForeignKey(
@@ -225,16 +241,28 @@ class Budget(models.Model):
     def __str__(self):
         return f"Budget: {self.category.name} - {self.month}/{self.year}"
 
+    objects = BudgetQuerySet.as_manager()
+
     @property
     def spent(self):
-        """Tổng chi tiêu thực tế trong tháng."""
-        return Transaction.objects.filter(
-            user=self.user,
-            category=self.category,
-            transaction_type='expense',
-            date__month=self.month,
-            date__year=self.year,
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        """
+        Tổng chi tiêu thực tế trong tháng.
+        Dùng giá trị tính sẵn từ `with_spent()` nếu có; nếu không thì truy vấn một lần rồi nhớ lại
+        trên instance (remaining / percent_used / is_over_budget dùng chung, không truy vấn lặp).
+        """
+        if 'spent_total' not in self.__dict__:
+            self.spent_total = Transaction.objects.filter(
+                user_id=self.user_id,
+                category_id=self.category_id,
+                transaction_type='expense',
+                date__month=self.month,
+                date__year=self.year,
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        return self.spent_total
+
+    def refresh_spent(self):
+        """Bỏ giá trị chi tiêu đã nhớ để lần đọc `spent` sau tính lại từ DB."""
+        self.__dict__.pop('spent_total', None)
 
     @property
     def remaining(self):
