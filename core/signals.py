@@ -1,6 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
+from django.contrib.auth.signals import user_logged_in
 
 from .models import UserProfile
 
@@ -14,11 +15,15 @@ def create_user_profile(sender, instance, created, **kwargs):
         UserProfile.objects.create(user=instance)
 
 
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    """Đảm bảo profile luôn được save cùng user."""
-    if hasattr(instance, 'profile'):
-        instance.profile.save()
+@receiver(user_logged_in)
+def touch_last_active(sender, request, user, **kwargs):
+    """
+    Ghi ngày hoạt động gần nhất khi đăng nhập.
+    Dùng UPDATE một cột thay vì profile.save(): bản profile trong bộ nhớ có thể đã cũ,
+    lưu cả bản ghi sẽ ghi đè XP/HP mới hơn (lỗi của handler save_user_profile trước đây).
+    """
+    from django.utils import timezone
+    UserProfile.objects.filter(user=user).update(last_active=timezone.localdate())
 
 
 # --- Xoá cache chuông nhắc hạn khi dữ liệu liên quan thay đổi ---

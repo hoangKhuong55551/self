@@ -33,9 +33,11 @@
                 <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mt-2">Đăng nhập</button>
             </form>
 
+            {% if allow_registration %}
             <div class="text-center mt-4 pt-2 border-top border-dark-subtle">
                 <small class="text-muted">Chưa có tài khoản? <a href="{% url 'core:register' %}" class="text-primary text-decoration-none fw-semibold">Đăng ký ngay</a></small>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>

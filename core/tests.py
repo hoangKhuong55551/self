@@ -288,3 +288,98 @@ class PWATest(TestCase):
         self.assertEqual(sw['Content-Type'], 'application/javascript')
         self.assertContains(sw, "OFFLINE_URL = '/offline/'")
         self.assertEqual(client.get(reverse('core:offline')).status_code, 200)
+
+
+@override_settings(AXES_ENABLED=True, AXES_FAILURE_LIMIT=3)
+class LoginLockoutTest(TestCase):
+    def setUp(self):
+        User.objects.create_user(username='victim', password='correct-horse-1')
+
+    def _login(self, password):
+        return self.client.post(reverse('login'), {'username': 'victim', 'password': password})
+
+    def test_locks_after_repeated_failures_even_with_correct_password(self):
+        for _ in range(2):
+            self.assertContains(self._login('wrong'), 'không chính xác')
+        locked = self._login('wrong')
+        self.assertEqual(locked.status_code, 429)
+        self.assertContains(locked, 'Tạm khoá đăng nhập', status_code=429)
+        self.assertContains(locked, '15 phút', status_code=429)
+        # Đã bị khoá thì mật khẩu đúng cũng không vào được
+        self.assertEqual(self._login('correct-horse-1').status_code, 429)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_success_resets_failure_counter(self):
+        self._login('wrong')
+        self._login('wrong')
+        self.assertEqual(self._login('correct-horse-1').status_code, 302)
+        self.client.logout()
+        self._login('wrong')
+        self._login('wrong')
+        self.assertEqual(self._login('correct-horse-1').status_code, 302)
+
+
+class AdminUrlTest(TestCase):
+    def test_admin_link_only_for_staff(self):
+        user = User.objects.create_user(username='normal', password='password123')
+        self.client.force_login(user)
+        self.assertNotContains(self.client.get(reverse('core:dashboard')), reverse('admin:index'))
+        user.is_staff = True
+        user.save()
+        self.assertContains(self.client.get(reverse('core:dashboard')), reverse('admin:index'))
+
+    def test_service_worker_skips_configured_admin_prefix(self):
+        response = self.client.get(reverse('core:service_worker'))
+        self.assertContains(response, f"const ADMIN_PREFIX = '{reverse('admin:index')}'".replace('/', '\u002F'))
+
+
+class RegistrationToggleTest(TestCase):
+    @override_settings(ALLOW_REGISTRATION=False)
+    def test_registration_can_be_disabled(self):
+        self.assertEqual(self.client.get(reverse('core:register')).status_code, 404)
+        response = self.client.post(reverse('core:register'), {
+            'username': 'stranger', 'first_name': 'A', 'last_name': 'B', 'email': 'a@b.vn',
+            'password1': 'Very-strong-pass-9', 'password2': 'Very-strong-pass-9',
+        })
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(User.objects.filter(username='stranger').exists())
+        self.assertNotContains(self.client.get(reverse('login')), reverse('core:register'))
+
+    def test_registration_logs_user_in(self):
+        response = self.client.post(reverse('core:register'), {
+            'username': 'newbie', 'first_name': 'A', 'last_name': 'B', 'email': 'a@b.vn',
+            'password1': 'Very-strong-pass-9', 'password2': 'Very-strong-pass-9',
+        })
+        self.assertRedirects(response, reverse('core:dashboard'))
+        self.assertEqual(int(self.client.session['_auth_user_id']), User.objects.get(username='newbie').pk)
+
+
+class SeedDataGuardTest(TestCase):
+    @override_settings(DEBUG=False)
+    def test_refuses_to_create_weak_superuser_in_production(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+        with self.assertRaises(CommandError):
+            call_command('seed_data')
+        self.assertFalse(User.objects.filter(username='student').exists())
+
+
+class ProfileSaveTest(TestCase):
+    def test_saving_user_does_not_overwrite_newer_xp(self):
+        user = User.objects.create_user(username='stale', password='password123')
+        user.profile  # profile được nạp vào bộ nhớ (xp=0)
+        UserProfile.objects.filter(user=user).update(xp=50, hp=70)  # nơi khác vừa cộng XP / trừ HP
+        user.first_name = 'Đổi tên'
+        user.save()
+        profile = UserProfile.objects.get(user=user)
+        self.assertEqual((profile.xp, profile.hp), (50, 70))
+
+    def test_login_updates_last_active_without_touching_xp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        user = User.objects.create_user(username='active', password='password123')
+        UserProfile.objects.filter(user=user).update(xp=42, last_active=timezone.localdate() - timedelta(days=3))
+        self.client.post(reverse('login'), {'username': 'active', 'password': 'password123'})
+        profile = UserProfile.objects.get(user=user)
+        self.assertEqual(profile.last_active, timezone.localdate())
+        self.assertEqual(profile.xp, 42)

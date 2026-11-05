@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -115,6 +116,8 @@ def offline_page(request):
 
 def register_view(request):
     """Đăng ký tài khoản người dùng mới."""
+    if not settings.ALLOW_REGISTRATION:
+        raise Http404('Đăng ký đã bị tắt')
     if request.user.is_authenticated:
         return redirect('core:dashboard')
 
@@ -122,7 +125,7 @@ def register_view(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             messages.success(request, f"Chào mừng {user.username} đến với Life OS! Hành trình của bạn bắt đầu từ hôm nay.")
             return redirect('core:dashboard')
     else:

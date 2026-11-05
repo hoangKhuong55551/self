@@ -14,7 +14,20 @@ User = get_user_model()
 class Command(BaseCommand):
     help = "Khoi tao du lieu mau (seed data) sinh dong cho demo do an."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--force', action='store_true',
+            help='Cho phép chạy khi DEBUG=False (sẽ tạo superuser student/admin123!)',
+        )
+
     def handle(self, *args, **options):
+        from django.conf import settings
+        from django.core.management.base import CommandError
+        if not settings.DEBUG and not options['force']:
+            raise CommandError(
+                'seed_data tạo superuser "student" với mật khẩu yếu, chỉ dùng cho dev. '
+                'Thêm --force nếu thật sự muốn chạy khi DEBUG=False.'
+            )
         username = 'student'
         user, created = User.objects.get_or_create(
             username=username,

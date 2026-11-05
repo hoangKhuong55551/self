@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Tạm khoá đăng nhập | Life OS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card p-4 p-md-5 text-center">
+            <div class="brand-icon mx-auto mb-3" style="width: 48px; height: 48px; font-size: 1.5rem;">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h3 class="fw-bold mb-2">Tạm khoá đăng nhập</h3>
+            <p class="text-muted small mb-4">
+                Bạn đã nhập sai mật khẩu quá {{ failure_limit }} lần.
+                Vì lý do bảo mật, vui lòng thử lại sau {% widthratio cooloff_timedelta.seconds 60 1 %} phút.
+            </p>
+            <a href="{% url 'login' %}" class="btn btn-primary w-100">Quay lại trang đăng nhập</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

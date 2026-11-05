@@ -121,12 +121,14 @@
                         <span>Sao lưu dữ liệu</span>
                     </a>
                 </li>
+                {% if user.is_staff %}
                 <li>
-                    <a href="/admin/" class="sidebar-link">
+                    <a href="{% url 'admin:index' %}" class="sidebar-link">
                         <i class="bi bi-sliders"></i>
                         <span>Admin</span>
                     </a>
                 </li>
+                {% endif %}
             </ul>
 
             <div class="sidebar-footer">
@@ -169,7 +171,7 @@
                 {% else %}
                 <div class="d-grid gap-2">
                     <a href="{% url 'login' %}" class="btn btn-outline-secondary btn-sm">Đăng nhập</a>
-                    <a href="{% url 'core:register' %}" class="btn btn-primary btn-sm">Đăng ký</a>
+                    {% if allow_registration %}<a href="{% url 'core:register' %}" class="btn btn-primary btn-sm">Đăng ký</a>{% endif %}
                 </div>
                 {% endif %}
             </div>

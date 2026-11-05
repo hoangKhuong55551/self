@@ -8,6 +8,11 @@ def user_profile_context(request):
     return {'profile': None}
 
 
+def site_settings(request):
+    from django.conf import settings
+    return {'allow_registration': settings.ALLOW_REGISTRATION}
+
+
 def notifications_context(request):
     """Nhắc hạn cho chuông trên topbar (xem core/notifications.py)."""
     if not request.user.is_authenticated:

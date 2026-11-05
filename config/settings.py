@@ -3,6 +3,7 @@ Django settings for Life OS project.
 """
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -41,6 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Chặn dò mật khẩu (khoá tạm sau nhiều lần đăng nhập sai)
+    'axes',
     # Life OS Apps
     'core.apps.CoreConfig',
     'finance.apps.FinanceConfig',
@@ -59,6 +62,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # Custom middleware
     'core.middleware.SubscriptionCheckMiddleware',
+    # Đặt cuối để bắt được mọi lần đăng nhập thất bại
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -76,6 +81,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.user_profile_context',
                 'core.context_processors.notifications_context',
+                'core.context_processors.site_settings',
             ],
             'libraries': {
                 'core_tags': 'core.templatetags.core_tags',
@@ -124,6 +130,30 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Auth settings
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# django-axes: sai 5 lần (cùng username + IP) thì khoá 15 phút; đăng nhập đúng sẽ reset bộ đếm
+AXES_FAILURE_LIMIT = int(os.environ.get('DJANGO_LOGIN_FAILURE_LIMIT', '5'))
+AXES_COOLOFF_TIME = timedelta(minutes=int(os.environ.get('DJANGO_LOGIN_COOLOFF_MINUTES', '15')))
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_TEMPLATE = 'registration/locked_out.html'
+# Sau reverse proxy (nginx, Render...) IP thật nằm trong X-Forwarded-For
+AXES_IPWARE_META_PRECEDENCE_ORDER = ['HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] if env_bool('DJANGO_BEHIND_PROXY') else ['REMOTE_ADDR']
+
+# Trừ tiền subscription đến hạn ngay khi user mở trang (tiện khi không có cron).
+# Có cron chạy `manage.py process_subscriptions` mỗi ngày thì đặt False.
+CHARGE_SUBSCRIPTIONS_ON_REQUEST = env_bool('DJANGO_CHARGE_SUBSCRIPTIONS_ON_REQUEST', True)
+
+# Tắt để chỉ mình bạn dùng (tạo tài khoản bằng `createsuperuser`), tránh người lạ tự đăng ký
+ALLOW_REGISTRATION = env_bool('DJANGO_ALLOW_REGISTRATION', True)
+
+# Đường dẫn trang admin — nên đổi sang chuỗi khó đoán khi deploy
+ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/').strip('/') + '/'
+
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
@@ -139,6 +169,8 @@ CACHES = {
 # Băm mật khẩu nhanh khi chạy test (không dùng cho môi trường thật)
 if 'test' in sys.argv[1:2]:
     PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+    # Client.login() trong test không truyền request nên tắt axes; test khoá đăng nhập tự bật lại
+    AXES_ENABLED = False
     # DB test rollback sau mỗi test nhưng cache thì không, nên tắt cache để test không ảnh hưởng nhau
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}}
 

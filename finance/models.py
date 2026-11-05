@@ -328,8 +328,8 @@ class Subscription(models.Model):
     def __str__(self):
         return f"{self.name} ({self.amount:,.0f}/{self.get_billing_cycle_display()})"
 
-    def advance_billing_date(self):
-        """Tính ngày thanh toán tiếp theo dựa trên chu kỳ."""
+    def billing_date_after(self, current):
+        """Ngày thanh toán kế tiếp sau `current` theo chu kỳ."""
         from dateutil.relativedelta import relativedelta
         cycle_map = {
             'weekly': relativedelta(weeks=1),
@@ -337,7 +337,11 @@ class Subscription(models.Model):
             'quarterly': relativedelta(months=3),
             'yearly': relativedelta(years=1),
         }
-        self.next_billing_date += cycle_map[self.billing_cycle]
+        return current + cycle_map[self.billing_cycle]
+
+    def advance_billing_date(self):
+        """Tính ngày thanh toán tiếp theo dựa trên chu kỳ."""
+        self.next_billing_date = self.billing_date_after(self.next_billing_date)
         self.save(update_fields=['next_billing_date'])
 
     @property

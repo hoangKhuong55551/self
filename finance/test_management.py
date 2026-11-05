@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from importlib import import_module
 
+from dateutil.relativedelta import relativedelta
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -290,6 +291,48 @@ class SubscriptionManagementTest(FinanceTestCase):
             user=self.user, wallet=self.wallet, name='Netflix', amount=Decimal('100000'),
             start_date=self.today, next_billing_date=self.today + timedelta(days=5),
         )
+
+    def test_stale_copy_cannot_charge_same_cycle_twice(self):
+        """Hai tiến trình cùng đọc gói đến hạn (2 thiết bị / cron + middleware): chỉ một bên được trừ."""
+        from finance.services import charge_due_subscriptions
+        Subscription.objects.filter(pk=self.sub.pk).update(next_billing_date=self.today)
+        balance_before = Wallet.objects.get(pk=self.wallet.pk).balance
+        stale = list(Subscription.objects.filter(pk=self.sub.pk))  # bản đọc trước khi bên kia trừ tiền
+
+        self.assertEqual(charge_due_subscriptions(Subscription.objects.filter(pk=self.sub.pk)), 1)
+
+        class StaleQuerySet:
+            """Giả lập tiến trình thứ hai vẫn cầm bản ghi cũ (next_billing_date = hôm nay)."""
+            def filter(self, **kwargs):
+                return self
+
+            def select_related(self, *args):
+                return stale
+
+        self.assertEqual(charge_due_subscriptions(StaleQuerySet()), 0)
+        self.assertEqual(Transaction.objects.filter(subscription=self.sub).count(), 1)
+        self.assertEqual(Wallet.objects.get(pk=self.wallet.pk).balance, balance_before - self.sub.amount)
+
+    def test_catch_up_charges_each_missed_cycle_once(self):
+        from finance.services import charge_due_subscriptions
+        start = self.today - relativedelta(months=2)
+        Subscription.objects.filter(pk=self.sub.pk).update(next_billing_date=start)
+        self.assertEqual(charge_due_subscriptions(Subscription.objects.all()), 3)
+        self.assertEqual(charge_due_subscriptions(Subscription.objects.all()), 0)
+        dates = sorted(Transaction.objects.filter(subscription=self.sub).values_list('date', flat=True))
+        second = start + relativedelta(months=1)  # cộng dồn từng kỳ như code thật (31/1 -> 28/2 -> 28/3)
+        self.assertEqual(dates, [start, second, second + relativedelta(months=1)])
+        self.sub.refresh_from_db()
+        self.assertGreater(self.sub.next_billing_date, self.today)
+
+    def test_middleware_can_be_disabled(self):
+        from django.test import override_settings
+        Subscription.objects.filter(pk=self.sub.pk).update(next_billing_date=self.today)
+        with override_settings(CHARGE_SUBSCRIPTIONS_ON_REQUEST=False):
+            self.client.get(reverse('finance:dashboard'))
+        self.assertFalse(Transaction.objects.filter(subscription=self.sub).exists())
+        self.client.get(reverse('finance:dashboard'))
+        self.assertEqual(Transaction.objects.filter(subscription=self.sub).count(), 1)
 
     def test_paused_subscription_is_not_charged(self):
         self.client.post(reverse('finance:subscription_toggle', args=[self.sub.pk]))

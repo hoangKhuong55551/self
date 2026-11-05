@@ -1,4 +1,5 @@
 /* Life OS service worker: network-first, cache chỉ dùng khi mất mạng. */
+{% url 'admin:index' as admin_url %}const ADMIN_PREFIX = '{{ admin_url|escapejs }}';
 const CACHE = 'lifeos-v1';
 const OFFLINE_URL = '/offline/';
 const PRECACHE = [OFFLINE_URL, '/static/icons/icon-192.png'];
@@ -21,7 +22,7 @@ self.addEventListener('fetch', event => {
 
   // Chỉ xử lý GET cùng origin, bỏ qua admin và các API JSON
   if (request.method !== 'GET' || url.origin !== location.origin) return;
-  if (url.pathname.startsWith('/admin/') || url.pathname.startsWith('/search/') ||
+  if (url.pathname.startsWith(ADMIN_PREFIX) || url.pathname.startsWith('/search/') ||
       url.pathname.startsWith('/export/') || url.pathname.endsWith('/lookup/')) return;
 
   event.respondWith(

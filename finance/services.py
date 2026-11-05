@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from core.notifications import invalidate_notifications
 
-from .models import Budget, Category, Transaction, Wallet
+from .models import Budget, Category, Subscription, Transaction, Wallet
 
 # Giới hạn số kỳ bù mỗi lần chạy, tránh vòng lặp vô hạn với dữ liệu hỏng
 MAX_CATCH_UP_CYCLES = 60
@@ -46,6 +46,10 @@ def charge_due_subscriptions(subscriptions, today=None):
     """
     Tạo giao dịch cho mọi kỳ đến hạn (kể cả các kỳ bị bỏ lỡ) và trừ ví.
     Trả về số giao dịch đã tạo.
+
+    An toàn khi chạy song song (2 thiết bị, cron + middleware...): mỗi kỳ được "giành" bằng
+    một UPDATE có điều kiện trên next_billing_date; tiến trình nào UPDATE trúng mới được trừ tiền,
+    nên một kỳ không bao giờ bị trừ hai lần.
     """
     today = today or timezone.now().date()
     count = 0
@@ -54,19 +58,29 @@ def charge_due_subscriptions(subscriptions, today=None):
             if sub.next_billing_date > today:
                 break
             with db_transaction.atomic():
+                due = sub.next_billing_date
+                claimed = Subscription.objects.filter(
+                    pk=sub.pk, is_active=True, next_billing_date=due,
+                ).update(next_billing_date=sub.billing_date_after(due))
+                if not claimed:
+                    # Kỳ này vừa được tiến trình khác xử lý (hoặc gói vừa bị tắt): đọc lại rồi tiếp tục
+                    sub.refresh_from_db(fields=['next_billing_date', 'is_active'])
+                    if not sub.is_active:
+                        break
+                    continue
+                sub.next_billing_date = sub.billing_date_after(due)
                 txn = Transaction.objects.create(
                     user=sub.user,
                     wallet_id=sub.wallet_id,
                     category_id=sub.category_id,
                     transaction_type=Transaction.TransactionType.EXPENSE,
                     amount=sub.amount,
-                    date=sub.next_billing_date,
+                    date=due,
                     note=f"[Tự động] Gia hạn: {sub.name}",
                     source=Transaction.Source.SUBSCRIPTION,
                     subscription=sub,
                 )
                 Wallet.objects.filter(pk=sub.wallet_id).update(balance=F('balance') - sub.amount)
-                sub.advance_billing_date()
             check_budget_and_penalize(sub.user, txn)
             count += 1
     return count
