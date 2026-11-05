@@ -166,6 +166,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- SortableJS (kéo thả) chỉ cần ở trang này -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 const CSRF_TOKEN = '{{ csrf_token }}';
 const today = new Date();
