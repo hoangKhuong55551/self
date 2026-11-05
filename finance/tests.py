@@ -25,7 +25,7 @@ class FinanceModuleTest(TestCase):
     def test_finance_dashboard_view(self):
         response = self.client.get(reverse('finance:dashboard'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '5000000')
+        self.assertContains(response, '5.000.000')  # định dạng VN có dấu chấm
 
     def test_create_transaction_updates_wallet(self):
         response = self.client.post(reverse('finance:transaction_list'), {
