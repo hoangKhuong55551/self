@@ -32,7 +32,7 @@
                 <div class="small text-success"><i class="bi bi-check-circle-fill me-1"></i>Mở khoá {{ p.unlocked_at|date:"d/m/Y" }}</div>
                 {% else %}
                 <div class="progress" style="height: 6px;">
-                    <div class="progress-bar" style="width: {{ p.percent }}%;"></div>
+                    <div class="progress-bar" style="width: {{ p.percent|css_pct }}%;"></div>
                 </div>
                 <div class="small text-dim font-monospace mt-1">{{ p.value }} / {{ p.achievement.target }}</div>
                 {% endif %}

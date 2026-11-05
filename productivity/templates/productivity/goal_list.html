@@ -25,7 +25,7 @@
 
                     <div class="progress my-2" style="height: 8px;">
                         <div class="progress-bar {% if g.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
-                             style="width: {{ g.progress }}%;"></div>
+                             style="width: {{ g.progress|css_pct }}%;"></div>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center text-muted small mt-2">

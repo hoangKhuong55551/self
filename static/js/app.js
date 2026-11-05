@@ -35,11 +35,31 @@ document.addEventListener('DOMContentLoaded', function () {
   applyTheme(html.getAttribute('data-bs-theme') || 'dark');
 
   if (themeBtn) {
-    themeBtn.addEventListener('click', function () {
+    themeBtn.addEventListener('click', function (e) {
       const current = html.getAttribute('data-bs-theme');
       const next = current === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      try { localStorage.setItem('lifeos-theme', next); } catch (e) {}
+      try { localStorage.setItem('lifeos-theme', next); } catch (err) {}
+
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!document.startViewTransition || reduce) { applyTheme(next); return; }
+
+      // Theme mới lan ra thành vòng tròn từ chính nút vừa bấm
+      const r = themeBtn.getBoundingClientRect();
+      const x = e.clientX || r.left + r.width / 2;
+      const y = e.clientY || r.top + r.height / 2;
+      const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+      html.classList.add('theme-reveal', 'theme-spin');
+      const transition = document.startViewTransition(() => applyTheme(next));
+      transition.ready.then(() => {
+        html.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 650, easing: 'cubic-bezier(0.65, 0, 0.35, 1)', pseudoElement: '::view-transition-new(root)' }
+        );
+      }).catch(() => {});
+      transition.finished.finally(() => {
+        html.classList.remove('theme-reveal');
+        setTimeout(() => html.classList.remove('theme-spin'), 400);
+      });
     });
   }
 

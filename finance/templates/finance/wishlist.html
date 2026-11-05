@@ -27,7 +27,7 @@
                             <strong class="text-white">{{ item.affordability }}%</strong>
                         </div>
                         <div class="progress mb-3" style="height: 6px;">
-                            <div class="progress-bar bg-info" style="width: {{ item.affordability }}%;"></div>
+                            <div class="progress-bar bg-info" style="width: {{ item.affordability|css_pct }}%;"></div>
                         </div>
                         <form method="post" action="{% url 'finance:wishlist_purchase' item.pk %}"
                               onsubmit="return confirm('Xác nhận mua món đồ này? Sẽ tự động tạo chi tiêu và chuyển sang Tài sản.')">

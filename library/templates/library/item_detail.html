@@ -38,7 +38,7 @@
                 <span class="font-monospace">{{ item.progress_current }}/{{ item.progress_total }} {{ item.progress_unit }} &bull; {{ item.progress_percent }}%</span>
             </div>
             <div class="progress mb-3" style="height: 8px;">
-                <div class="progress-bar {% if item.status == 'done' %}bg-success{% endif %}" style="width: {{ item.progress_percent }}%;"></div>
+                <div class="progress-bar {% if item.status == 'done' %}bg-success{% endif %}" style="width: {{ item.progress_percent|css_pct }}%;"></div>
             </div>
             {% endif %}
 

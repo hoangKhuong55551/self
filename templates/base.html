@@ -13,6 +13,10 @@
     <!-- Apply saved theme before first paint to avoid a flash -->
     <script>
         (function () {
+            // Bật hệ hiệu ứng xuất hiện (fx.js) trước khi vẽ để không bị nháy; bỏ qua nếu người dùng giảm chuyển động
+            try {
+                if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('fx-ready');
+            } catch (e) {}
             var t = 'dark';
             var accent = '';
             try {
@@ -38,7 +42,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
     <!-- Life OS Glassmorphism Design System -->
-    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=3.8">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=3.9">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -55,20 +59,20 @@
             <ul class="sidebar-nav">
                 <li class="nav-category">Tổng quan</li>
                 <li>
-                    <a href="{% url 'core:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'core' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <a href="{% url 'core:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'core' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-grid-1x2-fill"></i>
                         <span>Dashboard</span>
                     </a>
                 </li>
 
                 <li>
-                    <a href="{% url 'core:weekly_review' %}" class="sidebar-link {% if request.resolver_match.url_name == 'weekly_review' %}active{% endif %}">
+                    <a href="{% url 'core:weekly_review' %}" class="sidebar-link {% if request.resolver_match.url_name == 'weekly_review' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-calendar-heart"></i>
                         <span>Tổng kết tuần</span>
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'core:achievements' %}" class="sidebar-link {% if request.resolver_match.url_name == 'achievements' %}active{% endif %}">
+                    <a href="{% url 'core:achievements' %}" class="sidebar-link {% if request.resolver_match.url_name == 'achievements' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-award-fill"></i>
                         <span>Thành tích</span>
                     </a>
@@ -76,19 +80,19 @@
 
                 <li class="nav-category">Hệ thống phân hệ</li>
                 <li>
-                    <a href="{% url 'finance:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'finance' %}active{% endif %}">
+                    <a href="{% url 'finance:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'finance' and request.resolver_match.url_name not in 'wishlist workout_list asset_list wishlist_edit workout_edit asset_edit' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-wallet2"></i>
                         <span>Tài chính</span>
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'productivity:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'productivity' %}active{% endif %}">
+                    <a href="{% url 'productivity:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'productivity' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-check2-square"></i>
                         <span>Hiệu suất</span>
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'academic:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'academic' %}active{% endif %}">
+                    <a href="{% url 'academic:dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'academic' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-mortarboard-fill"></i>
                         <span>Học tập</span>
                     </a>
@@ -96,19 +100,19 @@
 
                 <li class="nav-category">Sức khoẻ & Media</li>
                 <li>
-                    <a href="{% url 'finance:workout_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'asset_list' or request.resolver_match.url_name == 'workout_list' %}active{% endif %}">
+                    <a href="{% url 'finance:workout_list' %}" class="sidebar-link {% if request.resolver_match.url_name in 'asset_list workout_list asset_edit workout_edit' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-activity"></i>
                         <span>Vận động & Tài sản</span>
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'library:shelf' %}" class="sidebar-link {% if request.resolver_match.app_name == 'library' %}active{% endif %}">
+                    <a href="{% url 'library:shelf' %}" class="sidebar-link {% if request.resolver_match.app_name == 'library' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-collection-play"></i>
                         <span>Thư viện</span>
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'finance:wishlist' %}" class="sidebar-link {% if request.resolver_match.url_name == 'wishlist' %}active{% endif %}">
+                    <a href="{% url 'finance:wishlist' %}" class="sidebar-link {% if request.resolver_match.url_name in 'wishlist wishlist_edit' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-bag-heart"></i>
                         <span>Wishlist</span>
                     </a>
@@ -116,14 +120,14 @@
 
                 <li class="nav-category">Quản trị</li>
                 <li>
-                    <a href="{% url 'core:export' %}" class="sidebar-link {% if request.resolver_match.url_name == 'export' %}active{% endif %}">
+                    <a href="{% url 'core:export' %}" class="sidebar-link {% if request.resolver_match.url_name == 'export' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-cloud-arrow-down"></i>
                         <span>Sao lưu dữ liệu</span>
                     </a>
                 </li>
                 {% if user.is_staff %}
                 <li>
-                    <a href="{% url 'admin:index' %}" class="sidebar-link">
+                    <a href="{% url 'admin:index' %}" class="sidebar-link"><span class="nav-pill" aria-hidden="true"></span>
                         <i class="bi bi-sliders"></i>
                         <span>Admin</span>
                     </a>
@@ -145,7 +149,7 @@
                         </span>
                     </div>
                     <div class="progress">
-                        <div class="progress-bar" style="width: {{ user.profile.xp_progress_percent }}%;"></div>
+                        <div class="progress-bar" style="width: {{ user.profile.xp_progress_percent|css_pct }}%;"></div>
                     </div>
                 </div>
                 {% endif %}
@@ -203,7 +207,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <!-- Notifications -->
                     <div class="dropdown">
-                        <button class="icon-btn notif-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-label="Nhắc hạn ({{ notification_count }})" title="Nhắc hạn">
+                        <button class="icon-btn notif-btn{% if notification_count %} has-alerts{% endif %}" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-label="Nhắc hạn ({{ notification_count }})" title="Nhắc hạn">
                             <i class="bi bi-bell{% if notification_count %}-fill{% endif %}"></i>
                             {% if notification_count %}<span class="notif-dot">{{ notification_count }}</span>{% endif %}
                         </button>
@@ -333,10 +337,10 @@
     <!-- Mobile bottom navigation -->
     {% with app=request.resolver_match.app_name url_name=request.resolver_match.url_name %}
     <nav class="bottom-nav" aria-label="Điều hướng chính">
-        <a href="{% url 'core:dashboard' %}" class="{% if app == 'core' and url_name == 'dashboard' %}active{% endif %}"><i class="bi bi-grid-1x2-fill"></i>Tổng quan</a>
-        <a href="{% url 'finance:dashboard' %}" class="{% if app == 'finance' %}active{% endif %}"><i class="bi bi-wallet2"></i>Tài chính</a>
-        <a href="{% url 'productivity:dashboard' %}" class="{% if app == 'productivity' %}active{% endif %}"><i class="bi bi-check2-square"></i>Hiệu suất</a>
-        <a href="{% url 'library:shelf' %}" class="{% if app == 'library' %}active{% endif %}"><i class="bi bi-collection-play"></i>Thư viện</a>
+        <a href="{% url 'core:dashboard' %}" class="{% if app == 'core' and url_name == 'dashboard' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span><i class="bi bi-grid-1x2-fill"></i>Tổng quan</a>
+        <a href="{% url 'finance:dashboard' %}" class="{% if app == 'finance' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span><i class="bi bi-wallet2"></i>Tài chính</a>
+        <a href="{% url 'productivity:dashboard' %}" class="{% if app == 'productivity' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span><i class="bi bi-check2-square"></i>Hiệu suất</a>
+        <a href="{% url 'library:shelf' %}" class="{% if app == 'library' %}active{% endif %}"><span class="nav-pill" aria-hidden="true"></span><i class="bi bi-collection-play"></i>Thư viện</a>
         <button type="button" id="bottomNavMenu"><i class="bi bi-list"></i>Menu</button>
     </nav>
     {% endwith %}
@@ -348,8 +352,8 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="{% static 'js/app.js' %}?v=3.6"></script>
-    <script src="{% static 'js/fx.js' %}?v=1.0"></script>
+    <script src="{% static 'js/app.js' %}?v=3.7"></script>
+    <script src="{% static 'js/fx.js' %}?v=1.1"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -120,7 +120,7 @@
                         {% if item.progress_total %}
                         <div class="d-flex align-items-center gap-2 mt-1">
                             <div class="progress flex-grow-1" style="height: 6px;">
-                                <div class="progress-bar" style="width: {{ item.progress_percent }}%;"></div>
+                                <div class="progress-bar" style="width: {{ item.progress_percent|css_pct }}%;"></div>
                             </div>
                             <small class="text-muted font-monospace" style="font-size: 0.72rem;">{{ item.progress_current }}/{{ item.progress_total }} {{ item.progress_unit }}</small>
                         </div>
@@ -157,7 +157,7 @@
                         <span class="text-muted font-monospace">{{ g.done }} / {{ g.goal.target }}</span>
                     </div>
                     <div class="progress" style="height: 8px;">
-                        <div class="progress-bar {% if g.percent >= 100 %}bg-success{% endif %}" style="width: {{ g.percent }}%;"></div>
+                        <div class="progress-bar {% if g.percent >= 100 %}bg-success{% endif %}" style="width: {{ g.percent|css_pct }}%;"></div>
                     </div>
                 </div>
                 {% empty %}

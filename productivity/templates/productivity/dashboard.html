@@ -46,7 +46,7 @@
                     </div>
                     <div class="progress" style="height: 8px;">
                         <div class="progress-bar {% if g.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
-                             style="width: {{ g.progress }}%;"></div>
+                             style="width: {{ g.progress|css_pct }}%;"></div>
                     </div>
                 </div>
                 {% empty %}

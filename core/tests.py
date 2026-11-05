@@ -383,3 +383,17 @@ class ProfileSaveTest(TestCase):
         profile = UserProfile.objects.get(user=user)
         self.assertEqual(profile.last_active, timezone.localdate())
         self.assertEqual(profile.xp, 42)
+
+
+class CssPctFilterTest(TestCase):
+    def test_always_dot_decimal_and_clamped(self):
+        from django.utils import translation
+        from core.templatetags.core_tags import css_pct
+        from django.template import Context, Template
+        with translation.override('vi'):
+            html = Template('{{ v|css_pct }}').render(Context({'v': 100 / 3}))
+        self.assertEqual(html, '33.33')
+        self.assertEqual(css_pct(Decimal('250')), '100')
+        self.assertEqual(css_pct(-5), '0')
+        self.assertEqual(css_pct(None), '0')
+        self.assertEqual(css_pct(40), '40')

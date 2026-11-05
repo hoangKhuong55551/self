@@ -102,7 +102,7 @@
                         <span class="text-muted font-monospace">{{ c.focus_minutes|minutes_hm }}</span>
                     </div>
                     <div class="progress" style="height: 6px;" role="progressbar" aria-label="{{ c.name }}: {{ c.focus_minutes }} phút">
-                        <div class="progress-bar bg-info" style="width: {{ c.bar_percent }}%;"></div>
+                        <div class="progress-bar bg-info" style="width: {{ c.bar_percent|css_pct }}%;"></div>
                     </div>
                 </div>
                 {% empty %}

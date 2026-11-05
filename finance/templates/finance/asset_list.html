@@ -38,7 +38,7 @@
                         {% if a.lifespan_percent is not None %}
                         <div class="progress mb-2" style="height: 6px;" role="progressbar" aria-label="{{ a.name }} đã dùng {{ a.lifespan_percent }}% tuổi thọ">
                             <div class="progress-bar {% if a.needs_replacement %}bg-danger{% elif a.lifespan_percent > 50 %}bg-warning{% else %}bg-success{% endif %}"
-                                 style="width: {{ a.lifespan_percent }}%;"></div>
+                                 style="width: {{ a.lifespan_percent|css_pct }}%;"></div>
                         </div>
                         {% if a.needs_replacement %}
                         <small class="text-danger fw-bold"><i class="bi bi-wrench-adjustable me-1"></i> Cần bảo dưỡng hoặc thay mới!</small>

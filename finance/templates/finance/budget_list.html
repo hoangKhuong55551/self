@@ -27,7 +27,7 @@
                     </div>
                     <div class="progress mb-2" style="height: 8px;">
                         <div class="progress-bar {% if b.is_over_budget %}bg-danger{% elif b.percent_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
-                             style="width: {{ b.percent_used }}%;"></div>
+                             style="width: {{ b.percent_used|css_pct }}%;"></div>
                     </div>
                     {% if b.is_over_budget %}
                     <small class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Vượt hạn mức chi tiêu!</small>

@@ -124,11 +124,26 @@
   --radius-xl: 24px;
 
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Đường cong lò xo (mô phỏng vật lý, xuất ra linear()); trình duyệt cũ dùng cubic-bezier gần đúng */
+  --spring-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --spring-bouncy: cubic-bezier(0.34, 1.8, 0.64, 1);
 
   --bs-primary-rgb: var(--accent-rgb);
   --bs-primary: rgb(var(--accent-rgb));
   --bs-link-color-rgb: var(--accent-light-rgb);
   --bs-font-sans-serif: var(--font-sans);
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    /* k=170 d=22: không nảy, dừng êm (0.6s) */
+    --spring-soft: linear(0, 0.023, 0.072, 0.137, 0.212, 0.292, 0.372, 0.458, 0.532, 0.6, 0.661, 0.717, 0.765, 0.808, 0.849, 0.879, 0.905, 0.927, 0.945, 0.96, 0.973, 0.982, 0.989, 0.994, 0.998, 1.001, 1.003, 1.005, 1.006, 1.004, 1.002, 1);
+    /* k=190 d=17: vượt 8% rồi dội về (0.7s) */
+    --spring: linear(0, 0.043, 0.144, 0.277, 0.424, 0.567, 0.699, 0.804, 0.897, 0.969, 1.021, 1.055, 1.075, 1.082, 1.082, 1.076, 1.065, 1.054, 1.042, 1.03, 1.021, 1.012, 1.005, 1, 0.997, 0.994, 0.993, 0.993, 0.994, 0.996, 1);
+    /* k=220 d=14: nảy rõ, dùng cho "pop" (0.8s) */
+    --spring-bouncy: linear(0, 0.05, 0.161, 0.322, 0.487, 0.651, 0.813, 0.939, 1.039, 1.116, 1.16, 1.181, 1.182, 1.168, 1.145, 1.113, 1.083, 1.053, 1.025, 1.004, 0.986, 0.975, 0.969, 0.966, 0.967, 0.971, 0.976, 0.981, 0.987, 0.992, 0.997, 1.001, 1.003, 1.005, 1.004, 1.002, 1);
+  }
 }
 
 [data-bs-theme="light"] { --bs-link-color-rgb: var(--accent-rgb); --accent-light: rgb(var(--accent-rgb)); }
@@ -315,15 +330,28 @@ a { color: rgb(var(--bs-link-color-rgb)); }
 
 .sidebar-link:hover i { color: var(--text-strong); }
 
+.sidebar-link { isolation: isolate; }
 .sidebar-link.active {
   color: var(--text-strong);
   font-weight: 600;
-  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.24), rgba(var(--accent-2-rgb), 0.08));
-  border-color: rgba(var(--accent-light-rgb), 0.28);
-  box-shadow: 0 4px 18px rgba(var(--accent-rgb), 0.18), var(--glass-highlight);
 }
 
-.sidebar-link.active::before {
+/* Nền của mục đang chọn là một phần tử riêng (.nav-pill) để khi chuyển trang
+   nó trượt từ mục cũ sang mục mới (View Transitions, xem cuối file) */
+.nav-pill { display: none; }
+.sidebar-link.active .nav-pill {
+  display: block;
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.24), rgba(var(--accent-2-rgb), 0.08));
+  border: 1px solid rgba(var(--accent-light-rgb), 0.28);
+  box-shadow: 0 4px 18px rgba(var(--accent-rgb), 0.18), var(--glass-highlight);
+  view-transition-name: nav-pill;
+}
+
+.sidebar-link.active .nav-pill::before {
   content: '';
   position: absolute;
   left: -0.75rem;
@@ -823,12 +851,12 @@ a { color: rgb(var(--bs-link-color-rgb)); }
   min-width: 280px;
   max-width: 380px;
   border-radius: var(--radius-md);
-  animation: toastIn 0.35s var(--ease) both;
+  animation: toastIn 0.6s var(--spring) both;
 }
 
 .lifeos-toast.hide { animation: toastOut 0.25s var(--ease) both; }
 
-@keyframes toastIn  { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes toastIn  { from { opacity: 0; transform: translateY(24px) scale(0.9); } to { opacity: 1; transform: none; } }
 @keyframes toastOut { to { opacity: 0; transform: translateX(24px); } }
 
 /* ─── Feature cards ─── */
@@ -863,12 +891,7 @@ a { color: rgb(var(--bs-link-color-rgb)); }
 
 .animate-in { animation: fadeSlideIn 0.4s var(--ease) both; }
 
-/* Staggered entrance for KPI rows and card grids */
-.content-container .row > [class*="col"] { animation: fadeSlideIn 0.45s var(--ease) backwards; }
-.content-container .row > [class*="col"]:nth-child(2) { animation-delay: 0.05s; }
-.content-container .row > [class*="col"]:nth-child(3) { animation-delay: 0.1s; }
-.content-container .row > [class*="col"]:nth-child(4) { animation-delay: 0.15s; }
-.content-container .row > [class*="col"]:nth-child(n+5) { animation-delay: 0.2s; }
+/* Hiệu ứng xuất hiện của các khối nội dung: xem "Chuyển động nâng cao" cuối file */
 
 /* ─── Kanban ─── */
 .kanban-column { background: var(--glass-bg); }
@@ -1301,9 +1324,16 @@ kbd {
 
   .bottom-nav i { font-size: 1.2rem; }
 
-  .bottom-nav .active {
-    color: var(--text-strong);
+  .bottom-nav a { position: relative; isolation: isolate; }
+  .bottom-nav .active { color: var(--text-strong); }
+  .bottom-nav .active .nav-pill {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
     background: rgba(var(--accent-rgb), 0.18);
+    view-transition-name: nav-pill-bottom;
   }
 
   .bottom-nav .active i { color: var(--accent-light); }
@@ -1329,10 +1359,11 @@ kbd {
 
 /* ─── Cross-page transitions (Chromium) ─── */
 @view-transition { navigation: auto; }
-::view-transition-old(root) { animation: 0.18s ease both vtOut; }
-::view-transition-new(root) { animation: 0.25s ease both vtIn; }
-@keyframes vtOut { to { opacity: 0; } }
-@keyframes vtIn { from { opacity: 0; transform: translateY(6px); } }
+/* Trang cũ lùi ra sau và mờ nhoè; trang mới nổi lên bằng lò xo */
+::view-transition-old(root) { animation: 0.22s ease-in both vtOut; }
+::view-transition-new(root) { animation: 0.55s var(--spring-soft) both vtIn; }
+@keyframes vtOut { to { opacity: 0; transform: scale(0.985); filter: blur(4px); } }
+@keyframes vtIn { from { opacity: 0; transform: translateY(14px) scale(0.995); filter: blur(6px); } }
 
 /* Sidebar & bottom nav giữ nguyên khi chuyển trang */
 .app-sidebar { view-transition-name: sidebar; }
@@ -1890,4 +1921,122 @@ tr:hover .row-actions, .card:hover .row-actions, .row-actions:focus-within { opa
 @media (prefers-reduced-motion: reduce) {
   .kpi-card.is-tilting, .kpi-card.is-tilting .kpi-icon-wrap { transform: none !important; }
   .xp-meter .progress-bar { animation: none; }
+}
+
+/* ==========================================================================
+   Chuyển động nâng cao: lò xo, chuyển trang, đổi theme, gợn sóng, nam châm
+   ========================================================================== */
+
+/* ── 1. Khối nội dung hiện ra lần lượt (do fx.js điều phối) ──
+   html.fx-ready được bật trong <head> (trừ khi người dùng giảm chuyển động).
+   Lưới an toàn: nếu JS lỗi, sau 2.5s mọi thứ vẫn hiện ra. */
+html.fx-ready .content-container .row > [class*="col"]:not(.fx-in) {
+  opacity: 0;
+  animation: fxSafety 0s linear 2.5s forwards;
+}
+@keyframes fxSafety { to { opacity: 1; } }
+
+.content-container .row > [class*="col"].fx-in {
+  animation: fxRise 0.75s var(--spring-soft) both;
+  animation-delay: var(--fx-delay, 0ms);
+}
+@keyframes fxRise {
+  from { opacity: 0; transform: translateY(22px) scale(0.97); filter: blur(8px); }
+  60%  { filter: blur(0); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+/* ── 2. Chuyển trang: ô chọn menu trượt sang mục mới bằng lò xo ── */
+.app-topbar { view-transition-name: topbar; }
+::view-transition-old(topbar), ::view-transition-new(topbar) { animation: none; }
+::view-transition-group(nav-pill),
+::view-transition-group(nav-pill-bottom) {
+  animation-duration: 0.7s;
+  animation-timing-function: var(--spring);
+}
+::view-transition-old(nav-pill), ::view-transition-new(nav-pill),
+::view-transition-old(nav-pill-bottom), ::view-transition-new(nav-pill-bottom) {
+  height: 100%;
+  animation-duration: 0.3s;
+}
+
+/* ── 3. Đổi sáng/tối: vòng tròn lan ra từ nút bấm (app.js) ── */
+html.theme-reveal::view-transition-old(root),
+html.theme-reveal::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html.theme-reveal::view-transition-new(root) { z-index: 9999; }
+/* Lúc đổi theme chụp cả trang làm một khối để vòng tròn phủ đều */
+html.theme-reveal .app-sidebar,
+html.theme-reveal .app-topbar,
+html.theme-reveal .bottom-nav,
+html.theme-reveal .nav-pill { view-transition-name: none !important; }
+#themeIcon { display: inline-block; }
+html.theme-spin #themeIcon { animation: fxSpinIcon 0.8s var(--spring-bouncy); }
+@keyframes fxSpinIcon { from { transform: rotate(-180deg) scale(0.5); opacity: 0; } }
+
+/* ── 4. Gợn sóng khi bấm nút ── */
+.btn, .icon-btn { position: relative; }
+/* Lớp chứa riêng để cắt gợn sóng theo bo góc mà không cắt các chi tiết tràn viền của nút */
+.fx-ripple-host {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.fx-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.25) 45%, transparent 70%);
+  animation: fxRipple 0.65s var(--spring-soft) forwards;
+}
+[data-bs-theme="light"] .btn-outline-secondary .fx-ripple,
+[data-bs-theme="light"] .sidebar-link .fx-ripple,
+[data-bs-theme="light"] .icon-btn .fx-ripple {
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.28) 0%, rgba(var(--accent-rgb), 0.1) 45%, transparent 70%);
+}
+@keyframes fxRipple {
+  to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+/* ── 5. Nút chính hút nhẹ theo con trỏ (nam châm) ── */
+.btn-primary, .btn-kanban {
+  translate: var(--mag-x, 0) var(--mag-y, 0);
+  transition-property: transform, translate, box-shadow, background-color, border-color, color;
+}
+.btn-primary.is-magnet, .btn-kanban.is-magnet {
+  transition: translate 0.12s linear, transform 0.18s var(--spring-bouncy), box-shadow 0.2s var(--ease);
+  box-shadow: 0 10px 28px -6px rgba(var(--accent-rgb), 0.65);
+}
+.btn-primary:not(.is-magnet), .btn-kanban:not(.is-magnet) {
+  transition: translate 0.7s var(--spring-bouncy), transform 0.18s var(--spring-bouncy), box-shadow 0.3s var(--ease), background-color 0.2s var(--ease);
+}
+
+/* ── 6. Thanh tiến độ chạy từ 0 bằng lò xo khi cuộn tới ── */
+html.fx-ready .progress-bar { transform-origin: left center; }
+html.fx-ready .progress.fx-bar-wait .progress-bar { transform: scaleX(0); }
+.progress.fx-bar-go .progress-bar {
+  transition: transform 1s var(--spring-soft);
+  transition-delay: var(--fx-delay, 0ms);
+}
+
+/* ── 7. Icon trên thẻ KPI nảy vào sau khi thẻ hiện ── */
+.fx-in .kpi-icon-wrap { animation: fxPop 0.8s var(--spring-bouncy) both; animation-delay: calc(var(--fx-delay, 0ms) + 180ms); }
+@keyframes fxPop { from { transform: scale(0.4) rotate(-25deg); opacity: 0; } }
+
+/* ── 8. Chuông thông báo lắc nhẹ khi có nhắc hạn ── */
+.notif-btn.has-alerts .bi { display: inline-block; transform-origin: 50% 10%; animation: fxRing 1.1s var(--ease) 1.2s 1; }
+@keyframes fxRing {
+  10%, 30% { transform: rotate(14deg); }
+  20%, 40% { transform: rotate(-12deg); }
+  50% { transform: rotate(6deg); }
+  60% { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary, .btn-kanban { translate: none !important; }
+  .fx-ripple { display: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

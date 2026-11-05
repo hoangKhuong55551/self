@@ -158,7 +158,7 @@
                         </div>
                         <div class="progress" style="height: 8px;">
                             <div class="progress-bar {% if forloop.first %}progress-budget-blue{% else %}progress-budget-amber{% endif %}"
-                                 style="width: {{ b.percent_used }}%;"></div>
+                                 style="width: {{ b.percent_used|css_pct }}%;"></div>
                         </div>
                     </div>
                     {% empty %}
@@ -276,7 +276,7 @@
                         <span class="d-block fw-semibold text-white text-truncate small">{{ item.title }}</span>
                         <span class="d-block text-muted" style="font-size: 0.75rem;">{{ item.status_label }}{% if item.progress_total %} &bull; {{ item.progress_percent }}%{% endif %}</span>
                         {% if item.progress_total %}
-                        <span class="progress d-flex mt-1" style="height: 5px;"><span class="progress-bar" style="width: {{ item.progress_percent }}%;"></span></span>
+                        <span class="progress d-flex mt-1" style="height: 5px;"><span class="progress-bar" style="width: {{ item.progress_percent|css_pct }}%;"></span></span>
                         {% endif %}
                     </span>
                 </a>

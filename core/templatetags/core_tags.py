@@ -88,3 +88,17 @@ def markdownify(text):
         url_schemes={'http', 'https', 'mailto'}, link_rel='noopener noreferrer nofollow',
     )
     return mark_safe(clean)
+
+
+@register.filter
+def css_pct(value):
+    """
+    Phần trăm dùng trong CSS (style="width: ...%"), luôn dùng dấu chấm và nằm trong 0..100.
+    Không dùng {{ x }} trực tiếp: với LANGUAGE_CODE='vi', 33.3 bị in thành "33,3" -> CSS không hợp lệ, thanh trống.
+    """
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return '0'
+    number = max(0.0, min(number, 100.0))
+    return f'{number:.2f}'.rstrip('0').rstrip('.')

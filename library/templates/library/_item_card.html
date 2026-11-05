@@ -46,7 +46,7 @@ Variables: item
         <div class="shelf-creator text-truncate">{{ item.creator|default:item.get_media_type_display }}</div>
         {% if item.status == 'in_progress' and item.progress_total %}
         <div class="progress mt-2" style="height: 5px;">
-            <div class="progress-bar" style="width: {{ item.progress_percent }}%;"></div>
+            <div class="progress-bar" style="width: {{ item.progress_percent|css_pct }}%;"></div>
         </div>
         <div class="shelf-progress-text">{{ item.progress_current }}/{{ item.progress_total }} {{ item.progress_unit }}</div>
         {% endif %}

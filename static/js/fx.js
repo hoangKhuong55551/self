@@ -5,6 +5,9 @@
  *  2. Thẻ KPI nghiêng 3D + vệt sáng chạy theo con trỏ
  *  3. "+N XP" bay lên khi XP tăng; hiệu ứng lên cấp kèm pháo giấy
  *  4. Pháo giấy dùng chung: LifeFX.confetti(x, y)
+ *  5. Khối nội dung hiện ra lần lượt (trong màn hình) hoặc khi cuộn tới
+ *  6. Thanh tiến độ chạy từ 0 bằng lò xo
+ *  7. Gợn sóng tại điểm bấm  8. Nút chính hút theo con trỏ  9. Biểu đồ mọc lần lượt
  *
  * Tôn trọng prefers-reduced-motion: tắt chuyển động, vẫn hiển thị kết quả cuối.
  */
@@ -63,7 +66,10 @@ window.LifeFX = (function () {
       entries.forEach(e => {
         if (!e.isIntersecting) return;
         io.unobserve(e.target);
-        countUp(e.target);
+        // Bắt đầu đếm khi thẻ chứa nó đã nổi lên (theo thứ tự xuất hiện)
+        const host = e.target.closest('.fx-in');
+        const delay = host ? parseInt(host.style.getPropertyValue('--fx-delay')) || 0 : 0;
+        setTimeout(() => countUp(e.target), delay + 150);
       });
     }, { threshold: 0.4 });
     els.forEach(el => io.observe(el));
@@ -251,10 +257,127 @@ window.LifeFX = (function () {
     else if (now.xp > prev.xp) xpGain(now.xp - prev.xp, at);
   }
 
+  // ───────────── 5. Khối nội dung hiện ra lần lượt ─────────────
+  // Khối trong màn hình: nối đuôi nhau theo thứ tự. Khối bên dưới: hiện khi cuộn tới.
+  const STAGGER = 70, MAX_DELAY = 480;
+
+  function initEntrance() {
+    const root = document.documentElement;
+    if (!root.classList.contains('fx-ready')) return;
+    const blocks = [...document.querySelectorAll('.content-container .row > [class*="col"]')];
+    const reveal = (el, delay) => {
+      el.style.setProperty('--fx-delay', delay + 'ms');
+      el.classList.add('fx-in');
+    };
+    let order = 0;
+    const later = [];
+    blocks.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.top < innerHeight && r.bottom > 0) reveal(el, Math.min(order++ * STAGGER, MAX_DELAY));
+      else later.push(el);
+    });
+    if (!later.length) return;
+    if (!('IntersectionObserver' in window)) return later.forEach(el => reveal(el, 0));
+    const io = new IntersectionObserver(entries => {
+      // Các khối cùng lọt vào màn hình trong một lần cuộn cũng nối đuôi nhau
+      entries.filter(e => e.isIntersecting).forEach((e, i) => {
+        io.unobserve(e.target);
+        reveal(e.target, Math.min(i * STAGGER, MAX_DELAY));
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    later.forEach(el => io.observe(el));
+  }
+
+  // ───────────── 6. Thanh tiến độ chạy từ 0 khi cuộn tới ─────────────
+  function initProgressBars() {
+    if (!document.documentElement.classList.contains('fx-ready') || !('IntersectionObserver' in window)) return;
+    const bars = [...document.querySelectorAll('.progress')].filter(p => !p.closest('.xp-meter'));
+    bars.forEach(p => p.classList.add('fx-bar-wait'));
+    const io = new IntersectionObserver(entries => {
+      entries.filter(e => e.isIntersecting).forEach((e, i) => {
+        io.unobserve(e.target);
+        const p = e.target;
+        // Chờ khối chứa nó hiện ra xong phần lớn rồi mới chạy
+        const host = p.closest('.fx-in');
+        const base = host ? parseInt(host.style.getPropertyValue('--fx-delay')) || 0 : 0;
+        p.style.setProperty('--fx-delay', (base + 250 + i * 60) + 'ms');
+        p.classList.add('fx-bar-go');
+        requestAnimationFrame(() => requestAnimationFrame(() => p.classList.remove('fx-bar-wait')));
+      });
+    }, { threshold: 0.2 });
+    bars.forEach(p => io.observe(p));
+  }
+
+  // ───────────── 7. Gợn sóng tại điểm bấm ─────────────
+  const RIPPLE_TARGETS = '.btn, .sidebar-link, .bottom-nav a, .icon-btn';
+
+  function initRipple() {
+    document.addEventListener('pointerdown', e => {
+      if (still() || e.button !== 0) return;
+      const target = e.target.closest(RIPPLE_TARGETS);
+      if (!target || target.disabled) return;
+      let host = target.querySelector(':scope > .fx-ripple-host');
+      if (!host) {
+        host = document.createElement('span');
+        host.className = 'fx-ripple-host';
+        host.setAttribute('aria-hidden', 'true');
+        target.prepend(host);
+      }
+      const r = target.getBoundingClientRect();
+      const size = Math.max(r.width, r.height) * 2.4;
+      const dot = document.createElement('span');
+      dot.className = 'fx-ripple';
+      dot.style.width = dot.style.height = size + 'px';
+      dot.style.left = (e.clientX - r.left) + 'px';
+      dot.style.top = (e.clientY - r.top) + 'px';
+      host.appendChild(dot);
+      dot.addEventListener('animationend', () => dot.remove());
+    }, { passive: true });
+  }
+
+  // ───────────── 8. Nút chính hút theo con trỏ ─────────────
+  const MAGNET = 0.28, MAGNET_MAX = 7; // tỉ lệ bám, độ lệch tối đa (px)
+
+  function initMagnet() {
+    if (still() || !canHover.matches) return;
+    document.querySelectorAll('.btn-primary, .btn-kanban').forEach(btn => {
+      btn.addEventListener('pointermove', e => {
+        const r = btn.getBoundingClientRect();
+        const clamp = v => Math.max(-MAGNET_MAX, Math.min(MAGNET_MAX, v));
+        btn.style.setProperty('--mag-x', clamp((e.clientX - r.left - r.width / 2) * MAGNET) + 'px');
+        btn.style.setProperty('--mag-y', clamp((e.clientY - r.top - r.height / 2) * MAGNET) + 'px');
+        btn.classList.add('is-magnet');
+      });
+      btn.addEventListener('pointerleave', () => {
+        btn.classList.remove('is-magnet');
+        btn.style.removeProperty('--mag-x');
+        btn.style.removeProperty('--mag-y');
+      });
+    });
+  }
+
+  // ───────────── 9. Biểu đồ: cột/điểm mọc lên lần lượt ─────────────
+  // Đặt mặc định ngay (không chờ DOMContentLoaded) vì các trang tạo chart ở block extra_js.
+  if (window.Chart && !still()) {
+    Chart.defaults.animation = {
+      duration: 900,
+      easing: 'easeOutQuart',
+      delay(ctx) {
+        if (ctx.type !== 'data' || ctx.mode !== 'default' || ctx.dropped) return 0;
+        ctx.dropped = true;
+        return 250 + ctx.dataIndex * 45 + ctx.datasetIndex * 120;
+      },
+    };
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    initEntrance();
     initCountUp();
     initTilt();
     initXPWatcher();
+    initProgressBars();
+    initRipple();
+    initMagnet();
   });
 
   return { confetti, xpGain, levelUp, syncXP, floatText, countUp };
