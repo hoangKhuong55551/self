@@ -208,6 +208,18 @@ function updateTaskStatus(taskId, newStatus) {
     .then(data => {
         if (data.success) {
             showToast(`Task đã chuyển sang: ${statusLabel(newStatus)}`, 'success');
+            if (window.LifeFX) {
+                const card = document.querySelector(`[data-task-id="${taskId}"]`);
+                const r = card ? card.getBoundingClientRect() : null;
+                const at = r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : undefined;
+                if (newStatus === 'done' && card) {
+                    card.classList.remove('just-done');
+                    void card.offsetWidth;
+                    card.classList.add('just-done');
+                    if (at) LifeFX.confetti(at.x, at.y, 70);
+                }
+                LifeFX.syncXP(data.user_xp, data.user_level, at);
+            }
         }
     })
     .catch(() => showToast('Không thể cập nhật task!', 'danger'));

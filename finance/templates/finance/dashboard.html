@@ -32,7 +32,7 @@
                     <i class="bi bi-wallet2"></i>
                 </div>
             </div>
-            <div class="kpi-value">{{ total_balance|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="kpi-value">{{ total_balance|currency_vn }} <small class="fs-6 text-muted font-monospace">đ</small></div>
             <div class="small text-muted">{{ wallets|length }} ví đang hoạt động</div>
         </div>
     </div>
@@ -44,7 +44,7 @@
                     <i class="bi bi-arrow-down-left"></i>
                 </div>
             </div>
-            <div class="kpi-value text-success">+{{ month_income|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="kpi-value text-success">+{{ month_income|currency_vn }} <small class="fs-6 text-muted font-monospace">đ</small></div>
             <div class="small text-muted">Dòng tiền thu nhập</div>
         </div>
     </div>
@@ -56,7 +56,7 @@
                     <i class="bi bi-arrow-up-right"></i>
                 </div>
             </div>
-            <div class="kpi-value text-danger">-{{ month_expense|floatformat:0 }} <small class="fs-6 text-muted font-monospace">đ</small></div>
+            <div class="kpi-value text-danger">-{{ month_expense|currency_vn }} <small class="fs-6 text-muted font-monospace">đ</small></div>
             <div class="small text-muted">{% if month_savings_rate is not None %}Giữ lại <strong class="{% if month_savings_rate >= 0 %}text-success{% else %}text-danger{% endif %}">{{ month_savings_rate }}%</strong> thu nhập tháng này{% else %}Dòng tiền chi tiêu{% endif %}</div>
         </div>
     </div>
