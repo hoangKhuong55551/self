@@ -2053,3 +2053,59 @@ html.fx-ready .progress.fx-bar-wait .progress-bar { transform: scaleX(0); }
   .fx-ripple { display: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+
+/* ─── Lịch tổng hợp (core/calendar.html) ─── */
+.cal-tone-primary { --tone: var(--accent-primary, #6366f1); }
+.cal-tone-warning { --tone: #f59e0b; }
+.cal-tone-info    { --tone: #38bdf8; }
+.cal-tone-danger  { --tone: #f43f5e; }
+.cal-tone-success { --tone: #10b981; }
+.cal-legend {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.2rem 0.6rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 14%, transparent); color: var(--tone);
+}
+.cal-card { overflow: hidden; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-head {
+  padding: 0.5rem; text-align: center; font-size: 0.75rem; font-weight: 600;
+  color: var(--text-dim); border-bottom: 1px solid var(--border-subtle);
+}
+.cal-day {
+  min-height: 108px; padding: 0.35rem; display: flex; flex-direction: column; gap: 0.2rem;
+  border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);
+}
+.cal-day:nth-child(7n) { border-right: 0; }
+.cal-day.is-out { opacity: 0.4; }
+.cal-date { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+.cal-day.is-today .cal-date {
+  display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: var(--accent-primary, #6366f1); color: #fff;
+}
+.cal-event {
+  display: flex; align-items: center; gap: 0.3rem; min-width: 0;
+  padding: 0.1rem 0.35rem; border-radius: 6px; font-size: 0.72rem; line-height: 1.35;
+  text-decoration: none; color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+}
+.cal-event span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-event:hover { background: color-mix(in srgb, var(--tone) 24%, transparent); }
+.cal-event.is-done span, .cal-agenda-item.is-done .text-white { text-decoration: line-through; opacity: 0.6; }
+.cal-more { font-size: 0.7rem; color: var(--text-dim); padding-left: 0.35rem; }
+.cal-dot {
+  display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; flex-shrink: 0;
+  border-radius: 8px; color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, transparent);
+}
+@media (max-width: 767.98px) {
+  /* Ô nhỏ: chỉ còn chấm màu, chi tiết xem ở danh sách bên dưới */
+  .cal-day { min-height: 58px; padding: 0.25rem; flex-direction: row; flex-wrap: wrap; align-content: flex-start; }
+  .cal-date { width: 100%; }
+  .cal-event { width: 8px; height: 8px; padding: 0; border-radius: 50%; background: var(--tone); }
+  .cal-event i, .cal-event span, .cal-more { display: none; }
+}
+
+/* ─── Checklist trong task ─── */
+.task-checklist { list-style: none; padding: 0; margin: 0.25rem 0 0.5rem; font-size: 0.8rem; }
+.task-checklist li { display: flex; gap: 0.4rem; align-items: flex-start; padding: 0.1rem 0; }
+.task-checklist input { margin-top: 0.2rem; cursor: pointer; }
+.task-checklist .is-done { text-decoration: line-through; color: var(--text-dim); }

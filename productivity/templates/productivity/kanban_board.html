@@ -61,9 +61,24 @@
                             {{ form.estimated_pomodoros }}
                         </div>
                     </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label" for="{{ form.due_date.id_for_label }}">Hạn hoàn thành</label>
+                            {{ form.due_date }}
+                            {% for e in form.due_date.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label" for="{{ form.due_time.id_for_label }}">Giờ</label>
+                            {{ form.due_time }}
+                        </div>
+                    </div>
                     <div class="mb-3">
-                        <label class="form-label">Hạn hoàn thành</label>
-                        {{ form.due_date }}
+                        <label class="form-label" for="{{ form.recurrence.id_for_label }}">Lặp lại</label>
+                        {{ form.recurrence }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.checklist_text.id_for_label }}">Checklist (mỗi dòng một việc)</label>
+                        {{ form.checklist_text }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Mô tả chi tiết</label>
@@ -210,6 +225,11 @@ function updateTaskStatus(taskId, newStatus) {
     .then(data => {
         if (data.success) {
             showToast(`Task đã chuyển sang: ${statusLabel(newStatus)}`, 'success');
+            if (data.next_task) {
+                // Task lặp lại: lần kế tiếp vừa được tạo → tải lại để hiện thẻ mới
+                setTimeout(() => showToast(`Đã tạo lần lặp tiếp theo, hạn ${data.next_task.due}`, 'info'), 400);
+                setTimeout(() => location.reload(), 1600);
+            }
             if (window.LifeFX) {
                 const card = document.querySelector(`[data-task-id="${taskId}"]`);
                 const r = card ? card.getBoundingClientRect() : null;

@@ -132,3 +132,46 @@ def register_view(request):
         form = RegisterForm()
 
     return render(request, 'registration/register.html', {'form': form})
+
+
+@login_required
+def quick_add(request):
+    """Thêm nhanh từ Ctrl+K. GET ?q= : xem trước (không ghi). POST q= : lưu."""
+    from . import quick_add as qa
+
+    text = (request.POST.get('q') if request.method == 'POST' else request.GET.get('q')) or ''
+    parsed = qa.parse(request.user, text[:300])
+    if parsed is None:
+        return JsonResponse({'match': False})
+    if request.method != 'POST' or not parsed['ok']:
+        return JsonResponse({
+            'match': True, 'ok': parsed['ok'], 'kind': parsed['kind'],
+            'title': parsed.get('title') or parsed.get('error'),
+            'subtitle': parsed.get('subtitle', ''),
+        }, status=200 if parsed['ok'] or request.method != 'POST' else 400)
+    message, url = qa.commit(request.user, parsed)
+    return JsonResponse({'match': True, 'ok': True, 'message': message, 'url': url})
+
+
+@login_required
+def calendar_view(request):
+    """Lịch tháng gom hạn task, mục tiêu, khoản định kỳ, khoản nợ, quỹ tiết kiệm."""
+    from .calendar import build_month
+
+    today = timezone.localdate()
+    try:
+        year, month = (int(x) for x in request.GET.get('m', '').split('-'))
+        date(year, month, 1)
+        if not 1900 <= year <= 2200:  # tránh tràn ngày khi tính lưới tuần / tháng trước-sau
+            raise ValueError
+    except (ValueError, TypeError):
+        year, month = today.year, today.month
+    data = build_month(request.user, year, month, today)
+    first = data['first']
+    prev_month = (first - timedelta(days=1)).replace(day=1)
+    next_month = (data['last'] + timedelta(days=1))
+    return render(request, 'core/calendar.html', {
+        **data, 'today': today,
+        'prev_m': f'{prev_month:%Y-%m}', 'next_m': f'{next_month:%Y-%m}', 'this_m': f'{today:%Y-%m}',
+        'weekday_names': ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+    })

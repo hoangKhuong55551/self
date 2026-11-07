@@ -41,7 +41,7 @@
                     {% endwith %}
                     <form method="post" action="{% url 'finance:saving_goal_adjust' g.pk %}" class="mt-auto d-flex gap-2">
                         {% csrf_token %}
-                        <input type="number" name="amount" class="form-control form-control-sm" min="1" step="1000" placeholder="Số tiền" required aria-label="Số tiền">
+                        <input type="number" name="amount" class="form-control form-control-sm" min="1" step="any" placeholder="Số tiền" required aria-label="Số tiền">
                         <button name="action" value="deposit" class="btn btn-sm btn-success text-nowrap"><i class="bi bi-plus-lg"></i> Nạp</button>
                         <button name="action" value="withdraw" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-dash-lg"></i> Rút</button>
                     </form>

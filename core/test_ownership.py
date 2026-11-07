@@ -13,7 +13,8 @@ from django.urls import URLPattern, URLResolver, get_resolver, reverse
 
 from academic.models import CodeSnippet, Course, Note, Semester
 from finance.models import (
-    Asset, Budget, Category, SavingGoal, Subscription, Transaction, Transfer, Wallet, WishlistItem, WorkoutLog,
+    Asset, Budget, Category, Debt, DebtPayment, SavingGoal, Subscription, Transaction, Transfer, Wallet, WishlistItem,
+    WorkoutLog,
 )
 from library.models import MediaItem
 from productivity.models import Goal, Habit, Task
@@ -27,6 +28,7 @@ def make_objects(user):
     wallet2 = Wallet.objects.create(user=user, name='Ví A2', balance=Decimal('0'))
     category = Category.objects.create(user=user, name='Ăn', type='expense')
     goal = Goal.objects.create(user=user, title='Mục tiêu A')
+    debt = Debt.objects.create(user=user, person='Bạn A', amount=Decimal('100'), wallet=wallet)
     semester = Semester.objects.create(user=user, name='HK1', year=2026, term=Semester._meta.get_field('term').choices[0][0])
     return {
         'finance:wallet': wallet,
@@ -44,7 +46,11 @@ def make_objects(user):
         'finance:asset': Asset.objects.create(user=user, name='Giày'),
         'finance:workout': WorkoutLog.objects.create(
             user=user, activity_type=WorkoutLog._meta.get_field('activity_type').choices[0][0], duration_minutes=30),
+        'finance:debt': debt,
+        'finance:debt_payment': DebtPayment.objects.create(debt=debt, amount=Decimal('10'), wallet=wallet),
         'productivity:goal': goal,
+        'productivity:toggle_checklist_item': Task.objects.create(
+            goal=goal, title='Task A3', checklist=[{'text': 'bí mật', 'done': False}]),
         'productivity:task': Task.objects.create(goal=goal, title='Task A'),
         'productivity:update_task_status': Task.objects.create(goal=goal, title='Task A2'),
         'productivity:habit': Habit.objects.create(user=user, name='Habit A'),

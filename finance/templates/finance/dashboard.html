@@ -216,7 +216,7 @@
         <!-- Subscriptions -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-repeat me-2 text-warning"></i>Gói định kỳ sắp tới</span>
+                <span><i class="bi bi-repeat me-2 text-warning"></i>Khoản định kỳ sắp tới</span>
                 <a href="{% url 'finance:subscription_list' %}" class="btn btn-sm btn-link text-decoration-none p-0 text-muted">Quản lý &rarr;</a>
             </div>
             <ul class="list-group list-group-flush">
@@ -226,10 +226,10 @@
                         <h6 class="mb-0 fw-semibold text-white">{{ s.name }}</h6>
                         <small class="text-muted">Hạn: {{ s.next_billing_date|date:"d/m" }} &bull; {{ s.get_billing_cycle_display }}</small>
                     </div>
-                    <span class="fw-bold text-danger">-{{ s.amount|floatformat:0 }} đ</span>
+                    {% if s.is_income %}<span class="fw-bold text-success">+{{ s.amount|currency_vn }} đ</span>{% else %}<span class="fw-bold text-danger">-{{ s.amount|currency_vn }} đ</span>{% endif %}
                 </li>
                 {% empty %}
-                <li class="list-group-item text-center text-muted py-3 small">Không có dịch vụ định kỳ nào.</li>
+                <li class="list-group-item text-center text-muted py-3 small">Không có khoản định kỳ nào.</li>
                 {% endfor %}
             </ul>
         </div>

@@ -78,6 +78,13 @@ class Task(models.Model):
         DELEGATE = 'delegate', '🔵 Không quan trọng & Khẩn'
         ELIMINATE = 'eliminate', '⚪ Không quan trọng & Không khẩn'
 
+    class Recurrence(models.TextChoices):
+        NONE = 'none', 'Không lặp lại'
+        DAILY = 'daily', 'Hằng ngày'
+        WEEKDAYS = 'weekdays', 'Ngày làm việc (T2–T6)'
+        WEEKLY = 'weekly', 'Hằng tuần'
+        MONTHLY = 'monthly', 'Hằng tháng'
+
     goal = models.ForeignKey(
         Goal,
         on_delete=models.CASCADE,
@@ -103,6 +110,17 @@ class Task(models.Model):
         default=Quadrant.SCHEDULE
     )
     due_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True)
+    recurrence = models.CharField(
+        max_length=10,
+        choices=Recurrence.choices,
+        default=Recurrence.NONE,
+        help_text="Xong task thì tự tạo lần kế tiếp (cần có hạn hoàn thành)",
+    )
+    # [{"text": "...", "done": false}, ...]
+    checklist = models.JSONField(default=list, blank=True)
+    # Đã sinh lần lặp kế tiếp (tránh sinh trùng khi bỏ tick rồi tick lại)
+    spawned_next = models.BooleanField(default=False, editable=False)
     estimated_pomodoros = models.PositiveIntegerField(
         default=1,
         help_text="Số pomodoro dự kiến"
@@ -116,6 +134,29 @@ class Task(models.Model):
 
     def __str__(self):
         return f"{'✅' if self.status == 'done' else '📋'} {self.title}"
+
+    @property
+    def checklist_done(self):
+        return sum(1 for item in self.checklist or [] if item.get('done'))
+
+    def next_due_date(self, today):
+        """Hạn của lần lặp kế tiếp: bước theo chu kỳ cho tới khi sau hôm nay."""
+        from dateutil.relativedelta import relativedelta
+        if self.recurrence == self.Recurrence.NONE or not self.due_date:
+            return None
+        step = {
+            'daily': relativedelta(days=1), 'weekdays': relativedelta(days=1),
+            'weekly': relativedelta(weeks=1), 'monthly': relativedelta(months=1),
+        }[self.recurrence]
+        nxt, n = self.due_date, 1
+        while True:
+            # Cộng từ hạn gốc (không cộng dồn) để "hằng tháng ngày 31" không trôi về 28
+            nxt = self.due_date + step * n
+            n += 1
+            if self.recurrence == 'weekdays' and nxt.weekday() >= 5:
+                continue
+            if nxt > today or n > 400:
+                return nxt
 
     @property
     def actual_pomodoros(self):

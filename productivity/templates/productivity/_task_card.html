@@ -33,7 +33,20 @@ Variables: task, show_start (bool)
     <!-- Goal -->
     <small class="text-muted mb-1 d-block" style="font-size: 0.78rem;">
         🎯 {{ t.goal.title|truncatechars:35 }}
+        {% if t.recurrence != 'none' %}<span class="ms-1 text-info" title="Lặp lại: {{ t.get_recurrence_display }}"><i class="bi bi-arrow-repeat"></i> {{ t.get_recurrence_display }}</span>{% endif %}
     </small>
+
+    {% if t.checklist %}
+    <div class="small text-muted" style="font-size: 0.75rem;"><i class="bi bi-list-check me-1"></i><span data-checklist-count="{{ t.pk }}">{{ t.checklist_done }}/{{ t.checklist|length }}</span> việc nhỏ</div>
+    <ul class="task-checklist">
+        {% for item in t.checklist %}
+        <li>
+            <input type="checkbox" class="form-check-input" id="cl-{{ t.pk }}-{{ forloop.counter0 }}" data-checklist-toggle="{% url 'productivity:toggle_checklist_item' t.pk %}" data-index="{{ forloop.counter0 }}" data-task="{{ t.pk }}" {% if item.done %}checked{% endif %}>
+            <label for="cl-{{ t.pk }}-{{ forloop.counter0 }}" class="{% if item.done %}is-done{% endif %}">{{ item.text }}</label>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 
     <!-- Due date (with overdue warning) -->
     {% if t.due_date %}
@@ -49,7 +62,7 @@ Variables: task, show_start (bool)
             ⏰ Hôm nay: {{ t.due_date|date:"d/m/Y" }}
         {% else %}
             {{ t.due_date|date:"d/m/Y" }}
-        {% endif %}
+        {% endif %}{% if t.due_time %} · {{ t.due_time|time:"H:i" }}{% endif %}
     </small>
     {% endif %}
 

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load core_tags %}
+
+{% block title %}Báo cáo tài chính {{ year }} | Life OS{% endblock %}
+
+{% block content %}
+{% include "finance/partials/nav.html" %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">Báo cáo tài chính</h3>
+        <p class="text-muted small mb-0">Cả năm theo từng tháng, và chi tiêu theo danh mục của tháng đã chọn.</p>
+    </div>
+    <form method="get" class="d-flex gap-2">
+        <select name="year" class="form-select form-select-sm" style="min-width: 7.5rem;" aria-label="Năm" onchange="this.form.submit()">
+            {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>Năm {{ y }}</option>{% endfor %}
+        </select>
+        <select name="month" class="form-select form-select-sm" style="min-width: 7rem;" aria-label="Tháng" onchange="this.form.submit()">
+            {% for m in month_choices %}<option value="{{ m }}" {% if m == month %}selected{% endif %}>Tháng {{ m }}</option>{% endfor %}
+        </select>
+    </form>
+</div>
+
+<!-- Tổng năm -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <span class="text-muted text-uppercase small fw-semibold">Thu nhập {{ year }}</span>
+            <div class="kpi-value text-success" data-no-count>{{ overview.income|currency_vn }} <small class="fs-6 text-muted">đ</small></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <span class="text-muted text-uppercase small fw-semibold">Chi tiêu {{ year }}</span>
+            <div class="kpi-value text-danger" data-no-count>{{ overview.expense|currency_vn }} <small class="fs-6 text-muted">đ</small></div>
+            <div class="small text-muted">TB {{ overview.avg_expense|currency_vn }} đ/tháng có giao dịch</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <span class="text-muted text-uppercase small fw-semibold">Tích luỹ</span>
+            <div class="kpi-value {% if overview.net < 0 %}text-danger{% endif %}" data-no-count>{{ overview.net|currency_signed_vn }} <small class="fs-6 text-muted">đ</small></div>
+            <div class="small text-muted">{% if overview.rate is not None %}Giữ lại {{ overview.rate }}% thu nhập{% else %}Chưa có thu nhập{% endif %}</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="kpi-card">
+            <span class="text-muted text-uppercase small fw-semibold">Tháng tốt / tệ nhất</span>
+            {% if overview.best %}
+            <div class="small mt-2"><span class="text-success fw-bold">{{ overview.best.label }}</span> · {{ overview.best.net|currency_signed_vn }} đ</div>
+            <div class="small"><span class="text-danger fw-bold">{{ overview.worst.label }}</span> · {{ overview.worst.net|currency_signed_vn }} đ</div>
+            {% else %}<div class="small text-muted mt-2">Chưa có dữ liệu</div>{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-bar-chart-line me-2 text-info"></i>Thu chi từng tháng năm {{ year }}</div>
+    <div class="card-body">
+        <div class="chart-box" style="position: relative; height: 260px;">
+            <canvas id="reportChart" role="img" aria-label="Biểu đồ thu nhập, chi tiêu và tích luỹ theo tháng năm {{ year }}"></canvas>
+        </div>
+        {{ chart|json_script:"report-data" }}
+        <div class="table-responsive mt-3">
+            <table class="table table-sm align-middle mb-0 small">
+                <thead><tr><th>Tháng</th><th class="text-end">Thu</th><th class="text-end">Chi</th><th class="text-end">Chênh lệch</th><th class="text-end">Giữ lại</th></tr></thead>
+                <tbody>
+                    {% for m in overview.months %}{% if not m.future and m.income or not m.future and m.expense or m.month == month %}
+                    <tr class="{% if m.month == month %}table-active{% endif %}">
+                        <td><a href="?year={{ year }}&month={{ m.month }}" class="text-decoration-none">{{ m.label }}</a></td>
+                        <td class="text-end text-success">{{ m.income|currency_vn }}</td>
+                        <td class="text-end text-danger">{{ m.expense|currency_vn }}</td>
+                        <td class="text-end {% if m.net < 0 %}text-danger{% else %}text-white{% endif %}">{{ m.net|currency_signed_vn }}</td>
+                        <td class="text-end text-muted">{% if m.rate is not None %}{{ m.rate }}%{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endif %}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-tags me-2 text-warning"></i>Chi theo danh mục · tháng {{ month }}/{{ year }}</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>Danh mục</th><th class="text-end">Tháng này</th><th class="text-end">Tháng trước</th><th class="text-end">TB 3 tháng trước</th><th class="text-end">Thay đổi</th></tr></thead>
+                    <tbody>
+                        {% for c in categories %}
+                        <tr>
+                            <td><span class="d-inline-block rounded-circle me-2" style="width:10px;height:10px;background:{{ c.color }}"></span>{{ c.name }}</td>
+                            <td class="text-end fw-bold text-white">{{ c.this|currency_vn }}</td>
+                            <td class="text-end text-muted">{{ c.last|currency_vn }}</td>
+                            <td class="text-end text-muted">{{ c.avg3|currency_vn }}</td>
+                            <td class="text-end text-nowrap">
+                                {% if c.change is None %}{% if c.this %}<span class="badge bg-warning-subtle text-warning">Mới</span>{% else %}—{% endif %}
+                                {% elif c.change > 0 %}<span class="text-danger"><i class="bi bi-arrow-up-short"></i>{{ c.change }}%</span>
+                                {% elif c.change < 0 %}<span class="text-success"><i class="bi bi-arrow-down-short"></i>{{ c.change|stringformat:"d"|slice:"1:" }}%</span>
+                                {% else %}<span class="text-muted">0%</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5">{% include "partials/empty_state.html" with icon="bi-tags" title="Không có khoản chi nào" text="Tháng này và 3 tháng trước chưa có giao dịch chi." %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-sort-down me-2 text-danger"></i>5 khoản chi lớn nhất tháng {{ month }}</div>
+            <ul class="list-group list-group-flush">
+                {% for t in top %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-white small fw-semibold">{{ t.note|default:t.category.name|default:"Chi tiêu"|truncatechars:32 }}</div>
+                        <small class="text-muted">{{ t.date|date:"d/m" }} · {{ t.category.name|default:"Chưa phân loại" }}</small>
+                    </div>
+                    <span class="fw-bold text-danger text-nowrap">-{{ t.amount|currency_vn }} đ</span>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-center text-muted small py-3">Không có khoản chi nào.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('reportChart');
+    const dataEl = document.getElementById('report-data');
+    if (!canvas || !dataEl || !window.Chart) return;
+    const rows = JSON.parse(dataEl.textContent);
+    const vnd = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
+    const compact = new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 });
+    const bar = { borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', borderWidth: 0, maxBarThickness: 18, categoryPercentage: 0.7, barPercentage: 0.9 };
+    new Chart(canvas, {
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [
+                { type: 'bar', label: 'Thu nhập', data: rows.map(r => r.income), backgroundColor: '#10b981', ...bar },
+                { type: 'bar', label: 'Chi tiêu', data: rows.map(r => r.expense), backgroundColor: '#f43f5e', ...bar },
+                { type: 'line', label: 'Chênh lệch', data: rows.map(r => r.net), borderColor: '#38bdf8', backgroundColor: '#38bdf8', borderWidth: 2, pointRadius: 2, tension: 0.3 },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 10 } },
+                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${vnd.format(c.parsed.y)} đ` } },
+            },
+            scales: {
+                y: { ticks: { callback: v => compact.format(v) }, grid: { drawTicks: false } },
+                x: { grid: { display: false } },
+            },
+        },
+    });
+});
+</script>
+{% endblock %}

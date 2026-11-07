@@ -50,4 +50,12 @@ urlpatterns = [
     path('workouts/', views.workout_list, name='workout_list'),
     path('workouts/<int:pk>/edit/', views.workout_edit, name='workout_edit'),
     path('workouts/<int:pk>/delete/', views.workout_delete, name='workout_delete'),
+
+    path('debts/', views.debt_list, name='debt_list'),
+    path('debts/<int:pk>/pay/', views.debt_pay, name='debt_pay'),
+    path('debts/<int:pk>/edit/', views.debt_edit, name='debt_edit'),
+    path('debts/<int:pk>/delete/', views.debt_delete, name='debt_delete'),
+    path('debts/payments/<int:pk>/delete/', views.debt_payment_delete, name='debt_payment_delete'),
+
+    path('reports/', views.report, name='report'),
 ]

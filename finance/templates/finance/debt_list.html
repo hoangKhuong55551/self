@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load core_tags %}
+
+{% block title %}Vay & cho mượn | Life OS{% endblock %}
+
+{% block content %}
+{% include "finance/partials/nav.html" %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <h3 class="fw-bold mb-1" style="letter-spacing: -0.02em;">Vay &amp; cho mượn</h3>
+        <p class="text-muted small mb-3">Ai đang nợ bạn, bạn đang nợ ai, còn bao nhiêu và hẹn trả khi nào.</p>
+
+        <div class="row g-3 mb-4">
+            <div class="col-6">
+                <div class="kpi-card">
+                    <span class="text-muted text-uppercase small fw-semibold">Người khác đang nợ bạn</span>
+                    <div class="kpi-value text-success" data-no-count>{{ lent_total|currency_vn }} <small class="fs-6 text-muted">đ</small></div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="kpi-card">
+                    <span class="text-muted text-uppercase small fw-semibold">Bạn đang nợ</span>
+                    <div class="kpi-value text-danger" data-no-count>{{ borrowed_total|currency_vn }} <small class="fs-6 text-muted">đ</small></div>
+                </div>
+            </div>
+        </div>
+
+        {% for d in open_debts %}
+        <div class="card mb-3 debt-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <div>
+                        <h6 class="fw-bold text-white mb-1">
+                            <i class="bi {% if d.is_lent %}bi-box-arrow-up-right text-success{% else %}bi-box-arrow-in-down-left text-danger{% endif %} me-1"></i>{{ d.title }}
+                            {% if d.overdue %}<span class="badge bg-danger-subtle text-danger ms-1">Quá hạn</span>{% endif %}
+                        </h6>
+                        <small class="text-muted">
+                            {{ d.date|date:"d/m/Y" }}{% if d.due_date %} · hẹn trả {{ d.due_date|date:"d/m/Y" }}{% endif %}{% if d.wallet %} · ví {{ d.wallet.name }}{% endif %}{% if d.note %} · {{ d.note }}{% endif %}
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold {% if d.is_lent %}text-success{% else %}text-danger{% endif %}">Còn {{ d.remaining|currency_vn }} đ</div>
+                        <small class="text-muted">/ {{ d.amount|currency_vn }} đ</small>
+                    </div>
+                </div>
+                <div class="progress my-2" style="height: 6px;" role="progressbar" aria-label="Đã trả {{ d.progress|floatformat:0 }}%">
+                    <div class="progress-bar {% if d.is_lent %}bg-success{% else %}bg-danger{% endif %}" style="width: {{ d.progress|floatformat:0 }}%"></div>
+                </div>
+                <form method="post" action="{% url 'finance:debt_pay' d.pk %}" class="row g-2 align-items-center mt-1">
+                    {% csrf_token %}
+                    <div class="col-6 col-md-3"><input type="number" name="amount" class="form-control form-control-sm" step="any" min="1" max="{{ d.remaining|floatformat:0 }}" value="{{ d.remaining|floatformat:0 }}" required aria-label="Số tiền"></div>
+                    <div class="col-6 col-md-3">
+                        <select name="wallet" class="form-select form-select-sm" aria-label="Ví">
+                            <option value="">— Không gắn ví —</option>
+                            {% for w in wallets %}<option value="{{ w.pk }}" {% if w.pk == d.wallet_id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3"><input type="date" name="date" class="form-control form-control-sm" value="{{ today|date:'Y-m-d' }}" required aria-label="Ngày"></div>
+                    <div class="col-6 col-md-3 d-flex gap-1">
+                        <button class="btn btn-sm btn-primary flex-grow-1">{% if d.is_lent %}Nhận lại{% else %}Trả{% endif %}</button>
+                        <a href="{% url 'finance:debt_edit' d.pk %}" class="btn btn-sm btn-outline-secondary" aria-label="Sửa {{ d.title }}"><i class="bi bi-pencil"></i></a>
+                    </div>
+                </form>
+                {% if d.payments.all %}
+                <details class="mt-2">
+                    <summary class="small text-muted">Lịch sử trả ({{ d.payments.all|length }} lần, đã trả {{ d.paid|currency_vn }} đ)</summary>
+                    <ul class="list-unstyled small mt-2 mb-0">
+                        {% for p in d.payments.all %}
+                        <li class="d-flex justify-content-between align-items-center py-1 border-bottom border-dark-subtle">
+                            <span class="text-muted">{{ p.date|date:"d/m/Y" }}{% if p.wallet %} · {{ p.wallet.name }}{% endif %}{% if p.note %} · {{ p.note }}{% endif %}</span>
+                            <span class="d-flex align-items-center gap-2">
+                                <strong class="text-white">{{ p.amount|currency_vn }} đ</strong>
+                                <form method="post" action="{% url 'finance:debt_payment_delete' p.pk %}" onsubmit="return confirm('Xoá lần trả này?')">{% csrf_token %}<button class="btn btn-sm btn-link text-danger p-0" aria-label="Xoá lần trả"><i class="bi bi-x-lg"></i></button></form>
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="card">{% include "partials/empty_state.html" with icon="bi-people" title="Không có khoản vay nào đang mở" text="Ghi lại khi cho bạn bè mượn tiền hoặc đi vay ở form bên phải để không quên." %}</div>
+        {% endfor %}
+
+        {% if settled_debts %}
+        <details class="mt-4">
+            <summary class="text-muted small">Đã tất toán ({{ settled_debts|length }})</summary>
+            <div class="card mt-2">
+                <ul class="list-group list-group-flush">
+                    {% for d in settled_debts %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check-circle text-success me-1"></i>{{ d.title }} <small class="text-muted">· {{ d.date|date:"d/m/Y" }}</small></span>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="text-muted">{{ d.amount|currency_vn }} đ</span>
+                            <a href="{% url 'finance:debt_edit' d.pk %}" class="btn btn-sm btn-outline-secondary" aria-label="Sửa {{ d.title }}"><i class="bi bi-pencil"></i></a>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </details>
+        {% endif %}
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-people me-2 text-info"></i>Ghi khoản mới</h5>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100 py-2">Lưu</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,6 +6,7 @@ Khi deploy có cron, đặt DJANGO_CHARGE_SUBSCRIPTIONS_ON_REQUEST=False và ch�
     python manage.py process_subscriptions
 """
 from django.conf import settings
+from django.contrib import messages
 from django.core.cache import cache
 from django.utils import timezone
 
@@ -31,6 +32,9 @@ class SubscriptionCheckMiddleware:
                     from finance.models import Subscription
                     from finance.services import charge_due_subscriptions
 
-                    charge_due_subscriptions(Subscription.objects.filter(user=request.user))
+                    count = charge_due_subscriptions(Subscription.objects.filter(user=request.user))
+                    if count:
+                        # Báo cho người dùng biết số dư ví vừa thay đổi
+                        messages.info(request, f"Đã tự động ghi {count} giao dịch định kỳ đến hạn (xem ở Giao dịch).")
 
         return self.get_response(request)

@@ -46,7 +46,7 @@ class Wallet(models.Model):
         super().save(*args, **kwargs)
 
     def compute_balance(self):
-        """Số dư = ban đầu + thu - chi + tiền chuyển đến - tiền chuyển đi."""
+        """Số dư = ban đầu + thu - chi + tiền chuyển đến - tiền chuyển đi ± vay/cho mượn."""
         def total(qs):
             return qs.aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
@@ -56,6 +56,11 @@ class Wallet(models.Model):
             - total(self.transactions.filter(transaction_type='expense'))
             + total(self.transfers_in.all())
             - total(self.transfers_out.all())
+            # Đi vay: tiền vào ví; cho mượn: tiền ra. Trả nợ thì ngược lại.
+            + total(self.debts.filter(direction='borrowed'))
+            - total(self.debts.filter(direction='lent'))
+            + total(self.debt_payments.filter(debt__direction='lent'))
+            - total(self.debt_payments.filter(debt__direction='borrowed'))
         )
 
     def recalculate_balance(self):
@@ -98,7 +103,7 @@ class Transaction(models.Model):
 
     class Source(models.TextChoices):
         MANUAL = 'manual', 'Nhập tay'
-        SUBSCRIPTION = 'subscription', 'Gói đăng ký tự động'
+        SUBSCRIPTION = 'subscription', 'Định kỳ tự động'
         WISHLIST = 'wishlist', 'Mua từ Wishlist'
 
     user = models.ForeignKey(
@@ -280,7 +285,7 @@ class Budget(models.Model):
 
 
 class Subscription(models.Model):
-    """Gói dịch vụ trả phí định kỳ."""
+    """Khoản định kỳ: chi (Netflix, tiền nhà...) hoặc thu (lương...). App tự ghi giao dịch khi đến hạn."""
 
     class BillingCycle(models.TextChoices):
         WEEKLY = 'weekly', 'Hàng tuần'
@@ -294,6 +299,11 @@ class Subscription(models.Model):
         related_name='subscriptions'
     )
     name = models.CharField(max_length=200)
+    transaction_type = models.CharField(
+        max_length=7,
+        choices=Transaction.TransactionType.choices,
+        default=Transaction.TransactionType.EXPENSE,
+    )
     amount = models.DecimalField(
         max_digits=15,
         decimal_places=2,
@@ -327,6 +337,10 @@ class Subscription(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.amount:,.0f}/{self.get_billing_cycle_display()})"
+
+    @property
+    def is_income(self):
+        return self.transaction_type == Transaction.TransactionType.INCOME
 
     def billing_date_after(self, current):
         """Ngày thanh toán kế tiếp sau `current` theo chu kỳ."""
@@ -602,3 +616,78 @@ class WorkoutLog(models.Model):
         super().save(*args, **kwargs)
         if self.gear_used:
             self.gear_used.recalculate_usage()
+
+
+class Debt(models.Model):
+    """Khoản cho mượn hoặc đi vay với một người. Trả dần qua DebtPayment."""
+
+    class Direction(models.TextChoices):
+        LENT = 'lent', 'Mình cho mượn'
+        BORROWED = 'borrowed', 'Mình đi vay'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='debts')
+    person = models.CharField(max_length=120)
+    direction = models.CharField(max_length=10, choices=Direction.choices, default=Direction.LENT)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    wallet = models.ForeignKey(
+        Wallet, on_delete=models.RESTRICT, null=True, blank=True, related_name='debts',
+        help_text='Bỏ trống nếu không muốn ảnh hưởng số dư ví',
+    )
+    date = models.DateField(default=timezone.now)
+    due_date = models.DateField(null=True, blank=True)
+    note = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['due_date', '-date']
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_lent(self):
+        return self.direction == self.Direction.LENT
+
+    @property
+    def title(self):
+        return f'Cho {self.person} mượn' if self.is_lent else f'Vay {self.person}'
+
+    @property
+    def paid(self):
+        cached = getattr(self, '_paid', None)
+        if cached is None:
+            cached = self.payments.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+            self._paid = cached
+        return cached
+
+    @property
+    def remaining(self):
+        return max(self.amount - self.paid, Decimal('0'))
+
+    @property
+    def is_settled(self):
+        return self.paid >= self.amount
+
+    @property
+    def progress(self):
+        return min(float(self.paid / self.amount * 100), 100) if self.amount else 0
+
+    def is_overdue(self, today=None):
+        today = today or timezone.localdate()
+        return bool(self.due_date and self.due_date < today and not self.is_settled)
+
+
+class DebtPayment(models.Model):
+    """Một lần trả nợ / nhận lại tiền."""
+    debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    wallet = models.ForeignKey(Wallet, on_delete=models.RESTRICT, null=True, blank=True, related_name='debt_payments')
+    date = models.DateField(default=timezone.now)
+    note = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'{self.debt.title}: {self.amount:,.0f}'

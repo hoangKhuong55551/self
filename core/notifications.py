@@ -69,8 +69,8 @@ def build_notifications(user, today):
     for sub in Subscription.objects.filter(user=user, is_active=True, next_billing_date__range=[today, soon])[:3]:
         items.append({
             'icon': 'bi-credit-card-2-front', 'tone': 'info',
-            'title': f'{sub.name} sắp gia hạn',
-            'subtitle': f'{sub.amount:,.0f} đ vào {sub.next_billing_date:%d/%m}'.replace(',', '.'),
+            'title': f'{sub.name} {"sắp nhận" if sub.is_income else "sắp gia hạn"}',
+            'subtitle': f'{"+" if sub.is_income else ""}{sub.amount:,.0f} đ vào {sub.next_billing_date:%d/%m}'.replace(',', '.'),
             'url': reverse('finance:subscription_list'),
         })
 

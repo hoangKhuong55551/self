@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import transaction as db_transaction
 from django.utils import timezone
-from django.db.models import Count, Sum, Q, F
+from django.db.models import Count, Sum, Q
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from datetime import timedelta
@@ -15,15 +15,17 @@ from core.notifications import invalidate_notifications
 
 from .models import (
     Wallet, Transaction, Budget, Subscription, WishlistItem, Asset, Category, Transfer, SavingGoal, WorkoutLog,
+    Debt, DebtPayment,
 )
 from .forms import (
     WalletForm, WalletEditForm, TransactionForm, BudgetForm, SubscriptionForm, WishlistItemForm,
     CategoryForm, TransferForm, SavingGoalForm, SavingGoalAdjustForm, TransactionFilterForm,
-    TransactionImportForm, AssetForm, WorkoutLogForm,
+    TransactionImportForm, AssetForm, WorkoutLogForm, DebtForm, DebtPaymentForm,
 )
 from .services import (
-    attach_budget_forecast, category_spending, check_budget_and_penalize, import_transactions_csv,
-    monthly_cashflow, savings_rate,
+    attach_budget_forecast, category_comparison, category_spending, charge_due_subscriptions,
+    import_transactions_csv, monthly_cashflow, record_transaction, savings_rate,
+    top_expenses, yearly_overview,
 )
 
 TRANSACTIONS_PER_PAGE = 25
@@ -137,6 +139,7 @@ def wallet_delete(request, pk):
     in_use = (
         wallet.transactions.exists() or wallet.transfers_in.exists()
         or wallet.transfers_out.exists() or wallet.subscriptions.exists()
+        or wallet.debts.exists() or wallet.debt_payments.exists()
     )
     if in_use:
         messages.error(request, f"Ví {wallet.name} đã có lịch sử nên không thể xoá. Hãy khoá ví thay vì xoá.")
@@ -222,14 +225,9 @@ def transaction_list(request):
     if request.method == 'POST':
         form = TransactionForm(request.POST, user=request.user)
         if form.is_valid():
-            txn = form.save(commit=False)
-            txn.user = request.user
-            txn.save()
-
-            # Cập nhật số dư ví
-            delta = txn.amount if txn.transaction_type == 'income' else -txn.amount
-            Wallet.objects.filter(pk=txn.wallet_id).update(balance=F('balance') + delta)
-            check_budget_and_penalize(request.user, txn)
+            record_transaction(request.user, **{
+                f: form.cleaned_data[f] for f in form.Meta.fields if f in form.cleaned_data
+            })
 
             messages.success(request, "Đã ghi nhận giao dịch thành công!")
             return redirect('finance:transaction_list')
@@ -402,15 +400,26 @@ def subscription_list(request):
             sub = form.save(commit=False)
             sub.user = request.user
             sub.save()
-            messages.success(request, f"Đã thêm gói dịch vụ {sub.name}!")
+            messages.success(request, f"Đã thêm khoản định kỳ {sub.name}!")
+            _charge_now(request, sub)
             return redirect('finance:subscription_list')
     else:
-        form = SubscriptionForm(user=request.user, initial={'start_date': timezone.now().date(), 'next_billing_date': timezone.now().date()})
+        today = timezone.localdate()  # cùng mốc ngày với charge_due_subscriptions
+        form = SubscriptionForm(user=request.user, initial={'start_date': today, 'next_billing_date': today})
 
-    monthly_total = sum((s.monthly_cost for s in subs if s.is_active), Decimal('0'))
+    active = [s for s in subs if s.is_active]
     return render(request, 'finance/subscription_list.html', {
-        'subscriptions': subs, 'form': form, 'monthly_total': monthly_total,
+        'subscriptions': subs, 'form': form,
+        'monthly_total': sum((s.monthly_cost for s in active if not s.is_income), Decimal('0')),
+        'monthly_income': sum((s.monthly_cost for s in active if s.is_income), Decimal('0')),
     })
+
+
+def _charge_now(request, sub):
+    """Khoản vừa tạo/sửa đã đến hạn thì ghi luôn (kiểm tra tự động chỉ chạy 1 lần/ngày)."""
+    count = charge_due_subscriptions(Subscription.objects.filter(pk=sub.pk))
+    if count:
+        messages.info(request, f"{sub.name} đã đến hạn: đã ghi {count} giao dịch và cập nhật số dư ví.")
 
 
 @login_required
@@ -425,6 +434,7 @@ def subscription_edit(request, pk):
     if not _saved(result):
         return result
     messages.success(request, f"Đã cập nhật {sub.name}.")
+    _charge_now(request, result)
     return redirect('finance:subscription_list')
 
 
@@ -685,3 +695,138 @@ def workout_delete(request, pk):
         gear.recalculate_usage()
     messages.success(request, "Đã xoá buổi vận động.")
     return redirect('finance:workout_list')
+
+
+# --- VAY / CHO MƯỢN ---
+def _recalc(*wallets):
+    for wallet in {w for w in wallets if w is not None}:
+        wallet.recalculate_balance()
+
+
+@login_required
+def debt_list(request):
+    debts = list(Debt.objects.filter(user=request.user).select_related('wallet')
+                 .annotate(_paid_sum=Sum('payments__amount')).prefetch_related('payments__wallet'))
+    for d in debts:
+        d._paid = d._paid_sum or Decimal('0')
+
+    form = DebtForm(request.POST or None, user=request.user, initial={'date': timezone.localdate()})
+    if request.method == 'POST' and form.is_valid():
+        with db_transaction.atomic():
+            debt = form.save(commit=False)
+            debt.user = request.user
+            debt.save()
+            _recalc(debt.wallet)
+        messages.success(request, f"Đã ghi: {debt.title} {debt.amount:,.0f} đ.".replace(',', '.'))
+        return redirect('finance:debt_list')
+
+    today = timezone.localdate()
+    open_debts = [d for d in debts if not d.is_settled]
+    open_debts.sort(key=lambda d: (d.due_date is None, d.due_date or today))
+    for d in open_debts:
+        d.overdue = d.is_overdue(today)
+    return render(request, 'finance/debt_list.html', {
+        'open_debts': open_debts,
+        'settled_debts': [d for d in debts if d.is_settled],
+        'lent_total': sum((d.remaining for d in open_debts if d.is_lent), Decimal('0')),
+        'borrowed_total': sum((d.remaining for d in open_debts if not d.is_lent), Decimal('0')),
+        'form': form,
+        'wallets': Wallet.objects.filter(user=request.user, is_active=True),
+        'today': today,
+    })
+
+
+@login_required
+@require_POST
+def debt_pay(request, pk):
+    debt = get_object_or_404(Debt, pk=pk, user=request.user)
+    form = DebtPaymentForm(request.POST, debt=debt, user=request.user)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for e in errors:
+                messages.error(request, e)
+        return redirect('finance:debt_list')
+    with db_transaction.atomic():
+        payment = form.save(commit=False)
+        payment.debt = debt
+        payment.save()
+        _recalc(payment.wallet)
+    debt._paid = None
+    verb = 'Đã nhận lại' if debt.is_lent else 'Đã trả'
+    msg = f"{verb} {payment.amount:,.0f} đ ({debt.title}).".replace(',', '.')
+    if debt.is_settled:
+        msg += ' Khoản này đã tất toán 🎉'
+    messages.success(request, msg)
+    return redirect('finance:debt_list')
+
+
+@login_required
+def debt_edit(request, pk):
+    debt = get_object_or_404(Debt, pk=pk, user=request.user)
+    # Đổi loại (cho mượn <-> đi vay) đảo dấu cả các lần trả, nên ví của lịch sử trả cũng phải tính lại
+    old_wallets = [debt.wallet] + [p.wallet for p in debt.payments.select_related('wallet')]
+    result = _edit_page(
+        request, debt, DebtForm, user=request.user,
+        title=f'Sửa: {debt.title}', back_url=reverse('finance:debt_list'),
+        delete_url=reverse('finance:debt_delete', args=[pk]),
+        delete_warning='Xoá cả lịch sử trả nợ của khoản này; số dư các ví liên quan được tính lại.',
+    )
+    if not _saved(result):
+        return result
+    _recalc(*old_wallets, result.wallet)
+    messages.success(request, f"Đã cập nhật {result.title}.")
+    return redirect('finance:debt_list')
+
+
+@login_required
+@require_POST
+def debt_delete(request, pk):
+    debt = get_object_or_404(Debt, pk=pk, user=request.user)
+    wallets = [debt.wallet] + [p.wallet for p in debt.payments.select_related('wallet')]
+    title = debt.title
+    with db_transaction.atomic():
+        debt.delete()
+        _recalc(*wallets)
+    messages.success(request, f"Đã xoá {title}.")
+    return redirect('finance:debt_list')
+
+
+@login_required
+@require_POST
+def debt_payment_delete(request, pk):
+    payment = get_object_or_404(DebtPayment, pk=pk, debt__user=request.user)
+    wallet = payment.wallet
+    with db_transaction.atomic():
+        payment.delete()
+        _recalc(wallet)
+    messages.success(request, "Đã xoá lần trả này.")
+    return redirect('finance:debt_list')
+
+
+# --- BÁO CÁO ---
+@login_required
+def report(request):
+    """Báo cáo theo năm (12 tháng) và so sánh chi theo danh mục của một tháng."""
+    today = timezone.localdate()
+    try:
+        year = int(request.GET.get('year', today.year))
+        month = int(request.GET.get('month', today.month if year == today.year else 12))
+        if not (2000 <= year <= today.year + 1 and 1 <= month <= 12):
+            raise ValueError
+    except ValueError:
+        year, month = today.year, today.month
+
+    overview = yearly_overview(request.user, year, today)
+    first_year = Transaction.objects.filter(user=request.user).order_by('date').values_list('date__year', flat=True).first()
+    years = list(range(today.year, (first_year or today.year) - 1, -1))
+    # Tháng chưa tới: để trống (null) thay vì 0 để biểu đồ không cắm xuống
+    chart = [{'label': m['label'],
+              **({'income': None, 'expense': None, 'net': None} if m['future'] else
+                 {'income': float(m['income']), 'expense': float(m['expense']), 'net': float(m['net'])})}
+             for m in overview['months']]
+    return render(request, 'finance/report.html', {
+        'year': year, 'month': month, 'years': years, 'month_choices': range(1, 13),
+        'overview': overview, 'chart': chart,
+        'categories': category_comparison(request.user, year, month),
+        'top': top_expenses(request.user, year, month),
+    })

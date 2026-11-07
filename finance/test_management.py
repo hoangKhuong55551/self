@@ -352,9 +352,11 @@ class SubscriptionManagementTest(FinanceTestCase):
             user=self.user, wallet=self.wallet, transaction_type='expense', amount=Decimal('100000'),
             source='subscription', subscription=self.sub,
         )
+        # Kỳ kế tiếp chưa tới hạn: kỳ đã đến hạn sẽ được ghi ngay khi lưu (xem _charge_now)
+        later = self.today + timedelta(days=30)
         self.client.post(reverse('finance:subscription_edit', args=[self.sub.pk]), {
             'name': 'Netflix Premium', 'amount': '260000', 'wallet': self.wallet.pk, 'billing_cycle': 'monthly',
-            'start_date': self.today.isoformat(), 'next_billing_date': self.today.isoformat(),
+            'start_date': self.today.isoformat(), 'next_billing_date': later.isoformat(),
         })
         self.sub.refresh_from_db()
         self.assertEqual(self.sub.amount, Decimal('260000'))

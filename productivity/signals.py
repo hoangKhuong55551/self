@@ -41,8 +41,29 @@ def task_status_changed(sender, instance, created, **kwargs):
                 f'task:{instance.pk}', xp_reward, f'Hoàn thành task: {instance.title}'
             )
 
+        instance._spawned = _spawn_next_occurrence(instance)
+
     elif previous == 'done' and current != 'done':
         instance.goal.recalculate_progress()
+
+
+def _spawn_next_occurrence(task):
+    """Task lặp lại vừa xong: tạo lần kế tiếp (một lần duy nhất cho mỗi task)."""
+    if task.recurrence == Task.Recurrence.NONE or not task.due_date:
+        return None
+    # "Giành" quyền sinh bằng UPDATE có điều kiện: hai request cùng lúc cũng chỉ sinh một task
+    if not Task.objects.filter(pk=task.pk, spawned_next=False).update(spawned_next=True):
+        return None
+    task.spawned_next = True
+    nxt = Task.objects.create(
+        goal=task.goal, title=task.title, description=task.description, course=task.course,
+        quadrant=task.quadrant, estimated_pomodoros=task.estimated_pomodoros,
+        due_date=task.next_due_date(timezone.localdate()), due_time=task.due_time,
+        recurrence=task.recurrence,
+        checklist=[{'text': item.get('text', ''), 'done': False} for item in task.checklist or []],
+    )
+    task.goal.recalculate_progress()
+    return nxt
 
 
 def _calculate_task_xp(task):

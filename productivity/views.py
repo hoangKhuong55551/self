@@ -110,14 +110,35 @@ def update_task_status(request, pk):
     if new_status in ['todo', 'in_progress', 'done']:
         task.status = new_status
         task.save()  # Kích hoạt signal: tính Goal progress & cộng XP!
+        spawned = getattr(task, '_spawned', None)
         return JsonResponse({
             'success': True,
+            'next_task': {'id': spawned.pk, 'due': spawned.due_date.strftime('%d/%m/%Y')} if spawned else None,
             'status': task.status,
             'goal_progress': task.goal.progress,
             'user_xp': request.user.profile.xp,
             'user_level': request.user.profile.level,
         })
     return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
+
+
+@login_required
+@require_POST
+def toggle_checklist_item(request, pk):
+    """Tick / bỏ tick một việc nhỏ (POST index=số thứ tự) trong checklist của task."""
+    task = get_object_or_404(Task, pk=pk, goal__user=request.user)
+    items = list(task.checklist or [])
+    try:
+        index = int(request.POST.get('index', ''))
+    except ValueError:
+        index = -1
+    if not 0 <= index < len(items):
+        return JsonResponse({'success': False, 'error': 'Không có mục này'}, status=404)
+    items[index] = {**items[index], 'done': not items[index].get('done')}
+    task.checklist = items
+    task.save(update_fields=['checklist'])
+    return JsonResponse({'success': True, 'done': items[index]['done'],
+                         'done_count': task.checklist_done, 'total': len(items)})
 
 
 @login_required

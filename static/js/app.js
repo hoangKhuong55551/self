@@ -192,6 +192,25 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('bottomNavMenu')?.addEventListener('click', () => toggleBtn?.click());
 });
 
+// Tick việc nhỏ trong checklist của task (thẻ Kanban...): lưu ngay, không tải lại trang
+document.addEventListener('change', function (e) {
+  const box = e.target.closest?.('[data-checklist-toggle]');
+  if (!box) return;
+  const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  box.disabled = true;
+  const body = new URLSearchParams({ index: box.dataset.index });
+  fetch(box.dataset.checklistToggle, { method: 'POST', body, headers: { 'X-CSRFToken': token, 'Accept': 'application/json' } })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => {
+      box.checked = d.done;
+      box.nextElementSibling?.classList.toggle('is-done', d.done);
+      const count = document.querySelector(`[data-checklist-count="${box.dataset.task}"]`);
+      if (count) count.textContent = `${d.done_count}/${d.total}`;
+    })
+    .catch(() => { box.checked = !box.checked; showToast('Không lưu được, thử lại nhé.', 'danger'); })
+    .finally(() => { box.disabled = false; });
+});
+
 // Gỡ skeleton khi Chart.js vẽ xong lần đầu
 if (window.Chart) {
   Chart.register({
@@ -274,15 +293,62 @@ const CommandPalette = (function () {
     root.hidden = false;
     input.value = '';
     lastQuery = '';
-    render(pages.map(p => ({ ...p, group: 'Trang' })));
+    render(pages.map(p => ({ ...p, group: 'Trang' })).concat([QUICK_HINT]));
     requestAnimationFrame(() => input.focus());
   }
 
   function close() { if (root) root.hidden = true; }
   function toggle() { if (root) (root.hidden ? open() : close()); }
 
+  // ── Thêm nhanh: "-50k cafe", "+15tr lương", "task nộp bài thứ 6" ──
+  const QUICK_RE = /^\s*([-+]\s*\d|(task|t|vi[eệ]c)\s*:\s*\S)/i;
+  const QUICK_HINT = {
+    group: 'Thêm nhanh', icon: 'bi-lightning-charge', action: 'hint',
+    title: 'Gõ "-50k cafe" để ghi chi, "+15tr lương" để ghi thu, "task: ..." để tạo việc',
+    subtitle: '@ví  #danh mục/mục tiêu  hôm qua · mai · thứ 6 · 05/11  ! = khẩn cấp',
+  };
+  let quickTimer = null, quickSeq = 0;
+
+  function quickPreview(q) {
+    const seq = ++quickSeq;
+    render([{ group: 'Thêm nhanh', icon: 'bi-hourglass-split', title: 'Đang đọc...', action: 'hint' }]);
+    clearTimeout(quickTimer);
+    quickTimer = setTimeout(() => {
+      fetch('/quick-add/?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+        .then(r => r.json())
+        .then(d => {
+          if (seq !== quickSeq || root.hidden) return;
+          if (!d.match) return render([QUICK_HINT]);
+          render([{
+            group: 'Thêm nhanh', title: d.title, subtitle: d.subtitle || '',
+            icon: d.ok ? (d.kind === 'task' ? 'bi-plus-square' : 'bi-cash-coin') : 'bi-exclamation-circle',
+            action: d.ok ? 'quick' : 'hint', query: q,
+          }]);
+        })
+        .catch(() => {});
+    }, 120);
+  }
+
+  function quickCommit(q) {
+    const body = new URLSearchParams({ q });
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch('/quick-add/', { method: 'POST', body, headers: { 'X-CSRFToken': token, 'Accept': 'application/json' } })
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (!ok || !d.ok) { showToast(d.title || 'Không lưu được, thử lại nhé.', 'danger'); return; }
+        showToast(d.message, 'success');
+        // Trang đang xem có thể hiển thị dữ liệu vừa đổi (số dư, danh sách task...) → tải lại
+        if (/^\/(finance|productivity)?\/?$|^\/(finance|productivity)\//.test(location.pathname)) {
+          setTimeout(() => location.reload(), 700);
+        }
+      })
+      .catch(() => showToast('Không lưu được, kiểm tra kết nối.', 'danger'));
+  }
+
   function onInput() {
     const q = input.value.trim();
+    if (QUICK_RE.test(q)) { clearTimeout(timer); lastQuery = ''; quickPreview(q); return; }
+    quickSeq++; // huỷ bản xem trước cũ đang chờ
     const fq = fold(q);
     const matchedPages = pages
       .filter(p => !fq || fold(p.title + ' ' + (p.keywords || '')).includes(fq))
@@ -356,7 +422,8 @@ const CommandPalette = (function () {
   }
 
   function run(item) {
-    if (!item) return;
+    if (!item || item.action === 'hint') return;
+    if (item.action === 'quick') { close(); quickCommit(item.query); return; }
     close();
     if (item.action === 'theme') {
       document.getElementById('themeToggleBtn')?.click();

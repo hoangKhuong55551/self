@@ -11,6 +11,7 @@ urlpatterns = [
     path('kanban/', views.kanban_board, name='kanban_board'),
     path('tasks/<int:pk>/status/', views.update_task_status, name='update_task_status'),
     path('tasks/<int:pk>/edit/', views.task_edit, name='task_edit'),
+    path('tasks/<int:pk>/checklist/', views.toggle_checklist_item, name='toggle_checklist_item'),
     path('tasks/<int:pk>/delete/', views.task_delete, name='task_delete'),
     path('habits/', views.habit_tracker, name='habit_tracker'),
     path('habits/<int:pk>/toggle/', views.toggle_habit_today, name='toggle_habit'),

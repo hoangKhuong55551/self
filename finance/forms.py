@@ -1,7 +1,7 @@
 from django import forms
 
 from core.forms import HttpsURLField
-from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, Transfer, SavingGoal, Asset, WorkoutLog
+from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, Transfer, SavingGoal, Asset, WorkoutLog, Debt, DebtPayment
 
 
 def date_input():
@@ -178,14 +178,15 @@ class SubscriptionForm(forms.ModelForm):
     class Meta:
         model = Subscription
         field_classes = {'url': HttpsURLField}
-        fields = ['name', 'amount', 'wallet', 'category', 'billing_cycle', 'start_date', 'next_billing_date', 'url', 'note']
+        fields = ['transaction_type', 'name', 'amount', 'wallet', 'category', 'billing_cycle', 'start_date', 'next_billing_date', 'url', 'note']
         labels = {
-            'name': 'Tên dịch vụ', 'amount': 'Chi phí (VND)', 'wallet': 'Ví thanh toán', 'category': 'Danh mục',
+            'transaction_type': 'Loại', 'name': 'Tên khoản', 'amount': 'Số tiền (VND)', 'wallet': 'Ví', 'category': 'Danh mục',
             'billing_cycle': 'Chu kỳ thanh toán', 'start_date': 'Ngày bắt đầu',
             'next_billing_date': 'Kỳ hạn kế tiếp', 'url': 'URL', 'note': 'Ghi chú',
         }
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Netflix, Spotify...'}),
+            'transaction_type': forms.Select(attrs={'class': 'form-select'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Netflix, tiền nhà, lương...'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '1000'}),
             'wallet': forms.Select(attrs={'class': 'form-select'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
@@ -201,7 +202,19 @@ class SubscriptionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             self.fields['wallet'].queryset = own_wallets(user, include=self.instance.wallet_id)
-            self.fields['category'].queryset = Category.objects.filter(user=user, type='expense')
+            # Cả danh mục thu lẫn chi; clean() kiểm tra khớp với loại khoản
+            self.fields['category'].queryset = Category.objects.filter(user=user).order_by('type', 'name')
+        self.fields['transaction_type'].required = False  # bỏ trống = khoản chi (như trước đây)
+
+    def clean_transaction_type(self):
+        return self.cleaned_data.get('transaction_type') or Transaction.TransactionType.EXPENSE
+
+    def clean(self):
+        cleaned = super().clean()
+        category, kind = cleaned.get('category'), cleaned.get('transaction_type')
+        if category and kind and category.type != kind:
+            self.add_error('category', 'Danh mục này thuộc loại "%s", không khớp với loại khoản.' % category.get_type_display())
+        return cleaned
 
 
 class WishlistItemForm(forms.ModelForm):
@@ -365,3 +378,68 @@ class WorkoutLogForm(forms.ModelForm):
         if not minutes:
             raise forms.ValidationError("Thời gian phải lớn hơn 0.")
         return minutes
+
+
+class DebtForm(forms.ModelForm):
+    class Meta:
+        model = Debt
+        fields = ['direction', 'person', 'amount', 'wallet', 'date', 'due_date', 'note']
+        labels = {
+            'direction': 'Loại', 'person': 'Người', 'amount': 'Số tiền (VND)', 'wallet': 'Ví (tuỳ chọn)',
+            'date': 'Ngày', 'due_date': 'Hẹn trả', 'note': 'Ghi chú',
+        }
+        widgets = {
+            'direction': forms.Select(attrs={'class': 'form-select'}),
+            'person': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên người vay / cho vay'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '1000'}),
+            'wallet': forms.Select(attrs={'class': 'form-select'}),
+            'date': date_input(),
+            'due_date': date_input(),
+            'note': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        help_texts = {'wallet': 'Chọn ví thì số dư ví thay đổi theo (cho mượn: trừ, đi vay: cộng).'}
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.fields['wallet'].required = False
+        self.fields['wallet'].empty_label = '— Không gắn ví —'
+        if user:
+            self.fields['wallet'].queryset = own_wallets(user, include=self.instance.wallet_id)
+
+    def clean(self):
+        cleaned = super().clean()
+        date, due = cleaned.get('date'), cleaned.get('due_date')
+        if date and due and due < date:
+            self.add_error('due_date', 'Ngày hẹn trả phải sau ngày mượn.')
+        amount = cleaned.get('amount')
+        if self.instance.pk and amount is not None and amount < self.instance.paid:
+            self.add_error('amount', f'Đã trả {self.instance.paid:,.0f} đ, số tiền không thể nhỏ hơn.'.replace(',', '.'))
+        return cleaned
+
+
+class DebtPaymentForm(forms.ModelForm):
+    class Meta:
+        model = DebtPayment
+        fields = ['amount', 'wallet', 'date', 'note']
+        labels = {'amount': 'Số tiền', 'wallet': 'Ví', 'date': 'Ngày', 'note': 'Ghi chú'}
+        widgets = {
+            'amount': forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'step': '1000'}),
+            'wallet': forms.Select(attrs={'class': 'form-select form-select-sm'}),
+            'date': forms.DateInput(attrs={'class': 'form-control form-control-sm', 'type': 'date'}, format='%Y-%m-%d'),
+            'note': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'placeholder': 'Ghi chú'}),
+        }
+
+    def __init__(self, *args, debt=None, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.debt = debt
+        self.fields['wallet'].required = False
+        self.fields['wallet'].empty_label = '— Không gắn ví —'
+        if user:
+            self.fields['wallet'].queryset = own_wallets(user)
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if self.debt is not None and amount > self.debt.remaining:
+            raise forms.ValidationError(f'Chỉ còn {self.debt.remaining:,.0f} đ chưa trả.'.replace(',', '.'))
+        return amount

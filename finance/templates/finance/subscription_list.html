@@ -1,25 +1,31 @@
 {% extends 'base.html' %}
 
-{% block title %}Dịch vụ Định kỳ | Life OS{% endblock %}
+{% block title %}Khoản định kỳ | Life OS{% endblock %}
 
 {% block content %}
 {% include "finance/partials/nav.html" %}
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="d-flex justify-content-between align-items-end mb-3 gap-2 flex-wrap">
-            <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">Dịch vụ &amp; Hóa đơn Định kỳ</h3>
-            <span class="small text-muted">Tổng ~<strong class="text-white">{{ monthly_total|currency_vn }} đ/tháng</strong></span>
+            <div>
+                <h3 class="fw-bold mb-0" style="letter-spacing: -0.02em;">Khoản thu &amp; chi định kỳ</h3>
+                <p class="text-muted small mb-0">Lương, tiền nhà, Netflix... đến hạn là app tự ghi giao dịch và cập nhật số dư ví.</p>
+            </div>
+            <span class="small text-muted text-nowrap">
+                Chi ~<strong class="text-danger">{{ monthly_total|currency_vn }} đ/tháng</strong>
+                {% if monthly_income %} · Thu ~<strong class="text-success">{{ monthly_income|currency_vn }} đ/tháng</strong>{% endif %}
+            </span>
         </div>
         <div class="card">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th>Dịch vụ</th>
-                            <th>Ví thanh toán</th>
+                            <th>Khoản</th>
+                            <th>Ví</th>
                             <th>Chu kỳ</th>
                             <th>Kỳ tiếp theo</th>
-                            <th class="text-end">Chi phí</th>
+                            <th class="text-end">Số tiền</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -28,13 +34,14 @@
                         <tr class="{% if not s.is_active %}opacity-50{% endif %}">
                             <td>
                                 <strong class="text-white">{{ s.name }}</strong>
+                                {% if s.is_income %}<span class="badge bg-success-subtle text-success ms-1">Thu</span>{% endif %}
                                 {% if not s.is_active %}<span class="badge bg-secondary-subtle text-muted ms-1">Tạm dừng</span>{% endif %}
                                 {% if s.url %}<a href="{{ s.url }}" target="_blank" class="ms-1 text-muted small"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
                             </td>
                             <td><span class="badge bg-dark-subtle border border-dark-subtle text-muted">{{ s.wallet.name }}</span></td>
                             <td><span class="badge bg-secondary-subtle text-muted">{{ s.get_billing_cycle_display }}</span></td>
                             <td class="text-muted small">{{ s.next_billing_date|date:"d/m/Y" }}</td>
-                            <td class="text-end fw-bold text-danger text-nowrap">-{{ s.amount|currency_vn }} đ</td>
+                            <td class="text-end fw-bold text-nowrap {% if s.is_income %}text-success{% else %}text-danger{% endif %}">{% if s.is_income %}+{% else %}-{% endif %}{{ s.amount|currency_vn }} đ</td>
                             <td class="text-end text-nowrap">
                                 <span class="row-actions">
                                     <form method="post" action="{% url 'finance:subscription_toggle' s.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" title="{% if s.is_active %}Tạm dừng{% else %}Kích hoạt lại{% endif %}" aria-label="{% if s.is_active %}Tạm dừng{% else %}Kích hoạt lại{% endif %} {{ s.name }}"><i class="bi {% if s.is_active %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i></button></form>
@@ -44,7 +51,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6">{% include "partials/empty_state.html" with icon="bi-arrow-repeat" title="Chưa có dịch vụ định kỳ" text="Thêm Netflix, Spotify, tiền điện... để app tự trừ tiền và nhắc trước kỳ gia hạn." %}</td>
+                            <td colspan="6">{% include "partials/empty_state.html" with icon="bi-arrow-repeat" title="Chưa có khoản định kỳ" text="Thêm lương, tiền nhà, Netflix... để app tự ghi giao dịch và nhắc trước khi đến hạn." %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -54,42 +61,17 @@
     </div>
     <div class="col-lg-4">
         <div class="card p-4">
-            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-repeat me-2 text-warning"></i>Thêm dịch vụ định kỳ</h5>
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-repeat me-2 text-warning"></i>Thêm khoản định kỳ</h5>
             <form method="post">
                 {% csrf_token %}
+                {% for field in form %}
                 <div class="mb-3">
-                    <label class="form-label">Tên dịch vụ</label>
-                    {{ form.name }}
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Chi phí (VND)</label>
-                    {{ form.amount }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Ví thanh toán</label>
-                    {{ form.wallet }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Danh mục</label>
-                    {{ form.category }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Chu kỳ thanh toán</label>
-                    {{ form.billing_cycle }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Ngày bắt đầu</label>
-                    {{ form.start_date }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Kỳ hạn kế tiếp</label>
-                    {{ form.next_billing_date }}
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">URL / Ghi chú</label>
-                    {{ form.url }}
-                </div>
-                <button type="submit" class="btn btn-primary w-100 py-2">Lưu dịch vụ</button>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100 py-2">Lưu khoản định kỳ</button>
             </form>
         </div>
     </div>

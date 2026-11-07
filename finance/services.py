@@ -42,6 +42,21 @@ def check_budget_and_penalize(user, txn):
             user.profile.lose_hp(hp_loss)
 
 
+def apply_to_wallet(txn):
+    """Cộng/trừ số tiền của giao dịch vào ví (cập nhật nguyên tử bằng F())."""
+    delta = txn.amount if txn.transaction_type == Transaction.TransactionType.INCOME else -txn.amount
+    Wallet.objects.filter(pk=txn.wallet_id).update(balance=F('balance') + delta)
+
+
+def record_transaction(user, **fields):
+    """Tạo giao dịch + cập nhật số dư ví + kiểm tra vượt ngân sách. Dùng chung cho mọi nơi tạo giao dịch tay."""
+    with db_transaction.atomic():
+        txn = Transaction.objects.create(user=user, **fields)
+        apply_to_wallet(txn)
+    check_budget_and_penalize(user, txn)
+    return txn
+
+
 def charge_due_subscriptions(subscriptions, today=None):
     """
     Tạo giao dịch cho mọi kỳ đến hạn (kể cả các kỳ bị bỏ lỡ) và trừ ví.
@@ -51,7 +66,8 @@ def charge_due_subscriptions(subscriptions, today=None):
     một UPDATE có điều kiện trên next_billing_date; tiến trình nào UPDATE trúng mới được trừ tiền,
     nên một kỳ không bao giờ bị trừ hai lần.
     """
-    today = today or timezone.now().date()
+    # Ngày theo giờ địa phương (now().date() là ngày UTC: 0h-7h sáng ở VN vẫn là "hôm qua")
+    today = today or timezone.localdate()
     count = 0
     for sub in subscriptions.filter(is_active=True, next_billing_date__lte=today).select_related('user'):
         for _ in range(MAX_CATCH_UP_CYCLES):
@@ -69,18 +85,19 @@ def charge_due_subscriptions(subscriptions, today=None):
                         break
                     continue
                 sub.next_billing_date = sub.billing_date_after(due)
+                income = sub.is_income
                 txn = Transaction.objects.create(
                     user=sub.user,
                     wallet_id=sub.wallet_id,
                     category_id=sub.category_id,
-                    transaction_type=Transaction.TransactionType.EXPENSE,
+                    transaction_type=sub.transaction_type,
                     amount=sub.amount,
                     date=due,
-                    note=f"[Tự động] Gia hạn: {sub.name}",
+                    note=f"[Tự động] {'Thu định kỳ' if income else 'Gia hạn'}: {sub.name}",
                     source=Transaction.Source.SUBSCRIPTION,
                     subscription=sub,
                 )
-                Wallet.objects.filter(pk=sub.wallet_id).update(balance=F('balance') - sub.amount)
+                apply_to_wallet(txn)
             check_budget_and_penalize(sub.user, txn)
             count += 1
     return count
@@ -335,3 +352,82 @@ def import_transactions_csv(user, wallet, data):
     invalidate_notifications(user.pk)
     result['created'] = len(to_create)
     return result
+
+
+def yearly_overview(user, year, today=None):
+    """Thu/chi/chênh lệch/tỉ lệ tiết kiệm từng tháng của một năm (tháng tương lai đánh dấu)."""
+    today = today or timezone.localdate()
+    rows = (
+        Transaction.objects.filter(user=user, date__year=year)
+        .annotate(month=TruncMonth('date')).values('month')
+        .annotate(
+            income=Sum('amount', filter=Q(transaction_type=Transaction.TransactionType.INCOME)),
+            expense=Sum('amount', filter=Q(transaction_type=Transaction.TransactionType.EXPENSE)),
+        )
+    )
+    by_month = {r['month'].month: r for r in rows}
+    months = []
+    for m in range(1, 13):
+        row = by_month.get(m, {})
+        income, expense = row.get('income') or Decimal('0'), row.get('expense') or Decimal('0')
+        months.append({
+            'month': m, 'label': f'T{m}',
+            'future': (year, m) > (today.year, today.month),
+            'income': income, 'expense': expense, 'net': income - expense,
+            'rate': savings_rate(income, expense),
+        })
+    active = [m for m in months if m['income'] or m['expense']]
+    income = sum((m['income'] for m in months), Decimal('0'))
+    expense = sum((m['expense'] for m in months), Decimal('0'))
+    return {
+        'months': months,
+        'income': income, 'expense': expense, 'net': income - expense, 'rate': savings_rate(income, expense),
+        'avg_expense': (expense / len(active)) if active else Decimal('0'),
+        'best': max(active, key=lambda m: m['net']) if active else None,
+        'worst': min(active, key=lambda m: m['net']) if active else None,
+    }
+
+
+def category_comparison(user, year, month):
+    """
+    Chi theo danh mục: tháng này so với tháng trước và trung bình 3 tháng trước đó.
+    Sắp theo số tiền tháng này; kèm % thay đổi so với tháng trước.
+    """
+    current = date_first = datetime(year, month, 1).date()
+    prev = current - relativedelta(months=1)
+    window = [current - relativedelta(months=i) for i in range(1, 4)]
+
+    rows = (
+        Transaction.objects.filter(
+            user=user, transaction_type=Transaction.TransactionType.EXPENSE,
+            date__gte=window[-1], date__lt=current + relativedelta(months=1),
+        )
+        .annotate(month=TruncMonth('date'))
+        .values('month', 'category_id', 'category__name', 'category__color')
+        .annotate(total=Sum('amount'))
+    )
+    data = {}
+    for r in rows:
+        key = r['category_id']
+        item = data.setdefault(key, {
+            'name': r['category__name'] or 'Chưa phân loại', 'color': r['category__color'] or '#64748b',
+            'by_month': {},
+        })
+        item['by_month'][r['month']] = r['total']
+
+    result = []
+    for item in data.values():
+        this = item['by_month'].get(date_first, Decimal('0'))
+        last = item['by_month'].get(prev, Decimal('0'))
+        avg3 = sum((item['by_month'].get(m, Decimal('0')) for m in window), Decimal('0')) / 3
+        change = round((this - last) / last * 100) if last else None
+        result.append({'name': item['name'], 'color': item['color'], 'this': this, 'last': last,
+                       'avg3': avg3, 'change': change, 'diff': this - last})
+    result.sort(key=lambda r: (-r['this'], -r['last']))
+    return result
+
+
+def top_expenses(user, year, month, limit=5):
+    return (Transaction.objects.filter(
+        user=user, transaction_type=Transaction.TransactionType.EXPENSE, date__year=year, date__month=month,
+    ).select_related('category', 'wallet').order_by('-amount', '-date')[:limit])
