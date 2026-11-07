@@ -1709,6 +1709,22 @@ a.shelf-cover:hover::after { transform: translateX(100%); }
 
 .sidebar-overlay.show { display: block; animation: fadeSlideIn 0.2s ease both; }
 
+/* Màn hình rộng: nút ☰ ẩn/hiện hẳn menu, nội dung giãn ra (lựa chọn được nhớ, xem app.js) */
+@media (min-width: 992px) {
+  .sidebar-toggle-btn { display: inline-block; }
+  .app-sidebar { transition: transform 0.28s var(--ease), visibility 0s linear 0s; }
+  .app-main { transition: margin-left 0.28s var(--ease); }
+  html.sidebar-collapsed .app-sidebar {
+    transform: translateX(-100%);
+    visibility: hidden; /* không Tab vào link bị ẩn */
+    transition: transform 0.28s var(--ease), visibility 0s linear 0.28s;
+  }
+  html.sidebar-collapsed .app-main { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar, .app-main { transition: none !important; }
+}
+
 @media (max-width: 991.98px) {
   .app-sidebar { transform: translateX(-100%); }
   .app-sidebar.show { transform: translateX(0); box-shadow: var(--glass-shadow-lg); }

@@ -10,12 +10,30 @@ document.addEventListener('DOMContentLoaded', function () {
   const toggleBtn = document.getElementById('sidebarToggleBtn');
   const overlay = document.getElementById('sidebarOverlay');
 
-  if (toggleBtn && sidebar) {
-    toggleBtn.addEventListener('click', function () {
+  // Màn hình rộng: ẩn/hiện hẳn menu, nhớ lựa chọn. Màn hình hẹp: menu trượt ra đè lên nội dung.
+  const desktop = window.matchMedia('(min-width: 992px)');
+  const syncToggleState = () => {
+    if (!toggleBtn) return;
+    const open = desktop.matches
+      ? !document.documentElement.classList.contains('sidebar-collapsed')
+      : !!sidebar?.classList.contains('show');
+    toggleBtn.setAttribute('aria-expanded', String(open));
+  };
+  const toggleSidebar = () => {
+    if (!sidebar) return;
+    if (desktop.matches) {
+      const collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+      try { localStorage.setItem('lifeos-sidebar', collapsed ? 'collapsed' : 'open'); } catch (e) {}
+    } else {
       sidebar.classList.toggle('show');
       if (overlay) overlay.classList.toggle('show', sidebar.classList.contains('show'));
-    });
-  }
+    }
+    syncToggleState();
+  };
+  window.LifeOSSidebar = { toggle: toggleSidebar };
+  toggleBtn?.addEventListener('click', toggleSidebar);
+  desktop.addEventListener?.('change', syncToggleState);
+  syncToggleState();
 
   if (overlay) {
     overlay.addEventListener('click', function () {
@@ -82,6 +100,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // 3. Keyboard Shortcuts
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', function (e) {
+    // Ctrl/Cmd+B → Ẩn/hiện menu (trừ khi đang gõ chữ)
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b' &&
+        !e.target.closest?.('input, textarea, select, [contenteditable="true"]')) {
+      e.preventDefault();
+      toggleSidebar();
+      return;
+    }
     // Ctrl/Cmd+K → Command palette
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
