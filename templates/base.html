@@ -32,17 +32,17 @@
     <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Tải font không chặn hiển thị (display=swap dùng font hệ thống trong lúc chờ) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <!-- Stylesheet font tải bình thường: sau lần đầu nằm trong cache nên không làm chậm,
+         và trang vẽ ngay bằng đúng font. Kiểu media="print" onload làm mỗi lần chuyển trang
+         vẽ bằng font hệ thống trước rồi dàn chữ + layout lại toàn trang (chữ nháy/nhảy). -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Bootstrap 5 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <!-- Life OS Glassmorphism Design System -->
-    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=4.0">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=4.5">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -258,6 +258,7 @@
             </header>
 
             <!-- Alerts & Messages framework -->
+            <div id="flashMessages">
             {% if messages %}
             <div class="px-4 pt-3">
                 {% for message in messages %}
@@ -268,6 +269,7 @@
                 {% endfor %}
             </div>
             {% endif %}
+            </div>
 
             <!-- Main Workspace Content -->
             <main class="content-container">
@@ -353,7 +355,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="{% static 'js/app.js' %}?v=3.7"></script>
-    <script src="{% static 'js/fx.js' %}?v=1.1"></script>
-    {% block extra_js %}{% endblock %}
+    <script src="{% static 'js/fx.js' %}?v=1.5"></script>
+    <script src="{% static 'js/nav.js' %}?v=1.0"></script>
+    <!-- Script riêng của từng trang: nav.js thay và chạy lại khối này khi đổi trang -->
+    <div id="pageScripts" hidden>{% block extra_js %}{% endblock %}</div>
 </body>
 </html>

@@ -259,33 +259,34 @@ window.LifeFX = (function () {
 
   // ───────────── 5. Khối nội dung hiện ra lần lượt ─────────────
   // Khối trong màn hình: nối đuôi nhau theo thứ tự. Khối bên dưới: hiện khi cuộn tới.
-  const STAGGER = 70, MAX_DELAY = 480;
+  const STAGGER = 35, MAX_DELAY = 200;
 
+  // Không đo vị trí bằng getBoundingClientRect (ép tính layout sớm, chặn lần vẽ đầu):
+  // IntersectionObserver báo về sau lần vẽ đầu. Khối đang thấy thì để yên,
+  // khối ngoài màn hình mới ẩn đi và chờ cuộn tới.
   function initEntrance() {
-    const root = document.documentElement;
-    if (!root.classList.contains('fx-ready')) return;
-    const blocks = [...document.querySelectorAll('.content-container .row > [class*="col"]')];
-    const reveal = (el, delay) => {
-      el.style.setProperty('--fx-delay', delay + 'ms');
-      el.classList.add('fx-in');
-    };
-    let order = 0;
-    const later = [];
-    blocks.forEach(el => {
-      const r = el.getBoundingClientRect();
-      if (r.top < innerHeight && r.bottom > 0) reveal(el, Math.min(order++ * STAGGER, MAX_DELAY));
-      else later.push(el);
-    });
-    if (!later.length) return;
-    if (!('IntersectionObserver' in window)) return later.forEach(el => reveal(el, 0));
+    if (!document.documentElement.classList.contains('fx-ready') || !('IntersectionObserver' in window)) return;
+    const blocks = document.querySelectorAll('.content-container .row > [class*="col"]');
+    const seen = new WeakSet();
     const io = new IntersectionObserver(entries => {
-      // Các khối cùng lọt vào màn hình trong một lần cuộn cũng nối đuôi nhau
-      entries.filter(e => e.isIntersecting).forEach((e, i) => {
-        io.unobserve(e.target);
-        reveal(e.target, Math.min(i * STAGGER, MAX_DELAY));
+      let i = 0;
+      entries.forEach(e => {
+        const el = e.target;
+        if (!seen.has(el)) {
+          seen.add(el);
+          // Dùng toạ độ thật (không tính rootMargin): khối đã ló vào màn hình thì để yên
+          if (e.isIntersecting || e.boundingClientRect.top < innerHeight) { io.unobserve(el); return; }
+          el.classList.add('fx-wait');
+          return;
+        }
+        if (!e.isIntersecting) return;
+        io.unobserve(el);
+        el.style.setProperty('--fx-delay', Math.min(i++ * STAGGER, MAX_DELAY) + 'ms');
+        el.classList.remove('fx-wait');
+        el.classList.add('fx-in');
       });
     }, { rootMargin: '0px 0px -8% 0px' });
-    later.forEach(el => io.observe(el));
+    blocks.forEach(el => io.observe(el));
   }
 
   // ───────────── 6. Thanh tiến độ chạy từ 0 khi cuộn tới ─────────────
@@ -341,6 +342,8 @@ window.LifeFX = (function () {
   function initMagnet() {
     if (still() || !canHover.matches) return;
     document.querySelectorAll('.btn-primary, .btn-kanban').forEach(btn => {
+      if (btn.dataset.fxMagnet) return; // đã gắn (initPage chạy lại sau khi đổi trang)
+      btn.dataset.fxMagnet = '1';
       btn.addEventListener('pointermove', e => {
         const r = btn.getBoundingClientRect();
         const clamp = v => Math.max(-MAGNET_MAX, Math.min(MAGNET_MAX, v));
@@ -360,25 +363,36 @@ window.LifeFX = (function () {
   // Đặt mặc định ngay (không chờ DOMContentLoaded) vì các trang tạo chart ở block extra_js.
   if (window.Chart && !still()) {
     Chart.defaults.animation = {
-      duration: 900,
+      duration: 600,
       easing: 'easeOutQuart',
       delay(ctx) {
         if (ctx.type !== 'data' || ctx.mode !== 'default' || ctx.dropped) return 0;
         ctx.dropped = true;
-        return 250 + ctx.dataIndex * 45 + ctx.datasetIndex * 120;
+        return ctx.dataIndex * 25 + ctx.datasetIndex * 60;
       },
     };
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  // Trang dựng sẵn (prerender) chưa hiển thị: đợi lúc người dùng thật sự mở
+  // rồi mới chạy hiệu ứng, nếu không hiệu ứng đã chạy xong trong nền.
+  const whenShown = fn => document.prerendering
+    ? document.addEventListener('prerenderingchange', fn, { once: true })
+    : fn();
+
+  // Hiệu ứng gắn vào phần nội dung: chạy lại mỗi khi nav.js thay nội dung trang
+  function initPage() {
     initEntrance();
     initCountUp();
     initTilt();
-    initXPWatcher();
     initProgressBars();
-    initRipple();
     initMagnet();
-  });
+  }
 
-  return { confetti, xpGain, levelUp, syncXP, floatText, countUp };
+  document.addEventListener('DOMContentLoaded', () => whenShown(() => {
+    initPage();
+    initXPWatcher();
+    initRipple();
+  }));
+
+  return { confetti, xpGain, levelUp, syncXP, floatText, countUp, initPage };
 })();

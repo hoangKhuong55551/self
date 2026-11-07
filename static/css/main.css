@@ -1351,13 +1351,18 @@ kbd {
 
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
-/* ─── Cross-page transitions (Chromium) ─── */
-@view-transition { navigation: auto; }
-/* Trang cũ lùi ra sau và mờ nhoè; trang mới nổi lên bằng lò xo */
-::view-transition-old(root) { animation: 0.22s ease-in both vtOut; }
-::view-transition-new(root) { animation: 0.55s var(--spring-soft) both vtIn; }
-@keyframes vtOut { to { opacity: 0; transform: scale(0.99); } }
-@keyframes vtIn { from { opacity: 0; transform: translateY(12px); } }
+/* ─── Chuyển trang ───
+   Không bật cross-document view transition (@view-transition { navigation: auto }):
+   đo trên Chrome thật, Chrome phải chụp ảnh trang cũ (nhiều lớp backdrop-filter) trước khi
+   hiện trang mới, làm mỗi lần chuyển chậm thêm ~100-250ms và thỉnh thoảng treo 1-1.4s.
+   Tắt đi thì trang mới vẽ sau ~200-280ms, không còn treo. Đổi theme vẫn dùng
+   view transition trong cùng trang (app.js), không bị ảnh hưởng. */
+/* nav.js: chỉ thay phần nội dung. Đang chờ (hiếm, khi chưa tải sẵn) thì mờ nhẹ để báo đã nhận;
+   nội dung mới hiện lên nhanh, chỉ opacity + transform. */
+html.nav-loading main.content-container { opacity: 0.55; transition: opacity 0.15s ease 0.08s; }
+main.content-container.nav-enter { animation: navEnter 0.18s ease-out both; }
+@keyframes navEnter { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { main.content-container.nav-enter { animation: none; } }
 
 /* Sidebar & bottom nav giữ nguyên khi chuyển trang */
 .app-sidebar { view-transition-name: sidebar; }
@@ -1919,22 +1924,22 @@ tr:hover .row-actions, .card:hover .row-actions, .row-actions:focus-within { opa
    Chuyển động nâng cao: lò xo, chuyển trang, đổi theme, gợn sóng, nam châm
    ========================================================================== */
 
-/* ── 1. Khối nội dung hiện ra lần lượt (do fx.js điều phối) ──
-   html.fx-ready được bật trong <head> (trừ khi người dùng giảm chuyển động).
+/* ── 1. Khối nằm dưới màn hình hiện lên khi cuộn tới (do fx.js điều phối) ──
+   Khối trong màn hình lúc mở trang hiện ngay, không bị ẩn chờ JS.
    Lưới an toàn: nếu JS lỗi, sau 2.5s mọi thứ vẫn hiện ra. */
-html.fx-ready .content-container .row > [class*="col"]:not(.fx-in) {
+.content-container .row > [class*="col"].fx-wait {
   opacity: 0;
   animation: fxSafety 0s linear 2.5s forwards;
 }
 @keyframes fxSafety { to { opacity: 1; } }
 
 .content-container .row > [class*="col"].fx-in {
-  animation: fxRise 0.75s var(--spring-soft) both;
+  animation: fxRise 0.45s var(--spring-soft) both;
   animation-delay: var(--fx-delay, 0ms);
 }
 /* Chỉ transform + opacity: filter: blur trên khối chứa kính mờ làm rớt frame nặng */
 @keyframes fxRise {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -1943,13 +1948,13 @@ html.fx-ready .content-container .row > [class*="col"]:not(.fx-in) {
 ::view-transition-old(topbar), ::view-transition-new(topbar) { animation: none; }
 ::view-transition-group(nav-pill),
 ::view-transition-group(nav-pill-bottom) {
-  animation-duration: 0.7s;
+  animation-duration: 0.45s;
   animation-timing-function: var(--spring);
 }
 ::view-transition-old(nav-pill), ::view-transition-new(nav-pill),
 ::view-transition-old(nav-pill-bottom), ::view-transition-new(nav-pill-bottom) {
   height: 100%;
-  animation-duration: 0.3s;
+  animation-duration: 0.2s;
 }
 
 /* ── 3. Đổi sáng/tối: vòng tròn lan ra từ nút bấm (app.js) ── */
