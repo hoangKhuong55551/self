@@ -39,7 +39,7 @@ jobs:
     env:
       DJANGO_DEBUG: "True"
       DJANGO_SECRET_KEY: ci-only-not-secret
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/lifeos
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/lifeos
       DJANGO_DB_SSL: "False"
     steps:
       - uses: actions/checkout@v4

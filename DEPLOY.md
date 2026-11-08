@@ -65,6 +65,20 @@ Sau đó workflow tự chạy **mỗi giờ từ 7h đến 23h**, và mỗi lầ
 - gửi bản tóm tắt buổi sáng (lần chạy lúc 8h);
 - ghi các khoản thu/chi định kỳ đến hạn.
 
+## Dùng chung database giữa máy và Render
+
+Thêm vào file `.env` trên máy:
+
+```
+DATABASE_URL=<chuỗi kết nối Neon, giống trên Render>
+DJANGO_FILE_STORAGE=db
+```
+
+- `DJANGO_FILE_STORAGE=db` cũng phải đặt, để ảnh tải lên ở bên nào thì bên kia cũng thấy.
+- Lệnh `python manage.py test` vẫn chạy trên SQLite, không đụng vào Neon.
+- Trên máy, lúc này mọi thao tác đều sửa **dữ liệu thật**. Muốn thử nghiệm thì tạo một branch trên Neon (Branches → New branch) và dùng chuỗi kết nối của branch đó.
+- Lệnh `migrate` chạy trên máy cũng sửa database thật. Chỉ chạy khi code mới đã sẵn sàng để đẩy lên Render.
+
 ## Giới hạn của gói miễn phí
 
 - **Web ngủ sau 15 phút không dùng.** Lần mở đầu tiên sau đó mất khoảng 30–60 giây.

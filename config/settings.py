@@ -105,6 +105,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database: SQLite khi chạy trên máy; đặt DATABASE_URL (Postgres, vd Neon) khi deploy
 DATABASE_URL = os.environ.get('DATABASE_URL')
+TESTING = 'test' in sys.argv[1:2]
+if TESTING:
+    # Test không bao giờ chạy trên database thật (kể cả khi .env trỏ vào Neon).
+    # Muốn test trên Postgres thì đặt TEST_DATABASE_URL.
+    DATABASE_URL = os.environ.get('TEST_DATABASE_URL')
 if DATABASE_URL:
     DATABASES = {'default': dj_database_url.parse(
         DATABASE_URL, conn_max_age=60, conn_health_checks=True,
@@ -207,7 +212,7 @@ CACHES = {
 }
 
 # Băm mật khẩu nhanh khi chạy test (không dùng cho môi trường thật)
-if 'test' in sys.argv[1:2]:
+if TESTING:
     PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
     # Client.login() trong test không truyền request nên tắt axes; test khoá đăng nhập tự bật lại
     AXES_ENABLED = False
