@@ -4,6 +4,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse, Http404
+from django.urls import reverse
 from django.utils import timezone
 from datetime import date, timedelta
 from .services import get_weekly_dashboard, global_search, get_week_review
@@ -16,7 +17,10 @@ from .forms import RegisterForm, WeeklyReflectionForm
 def dashboard(request):
     """View hiển thị dashboard tổng hợp tuần."""
     _announce_new_achievements(request)
+    from academic.services_schedule import sessions_on
+
     context = get_weekly_dashboard(request.user)
+    context['today_classes'] = sessions_on(request.user, timezone.localdate())
     return render(request, 'core/dashboard.html', context)
 
 
@@ -170,8 +174,128 @@ def calendar_view(request):
     first = data['first']
     prev_month = (first - timedelta(days=1)).replace(day=1)
     next_month = (data['last'] + timedelta(days=1))
+    token = getattr(getattr(request.user, 'profile', None), 'calendar_token', '')
+    feed_url = request.build_absolute_uri(reverse('core:calendar_feed', args=[token])) if token else ''
     return render(request, 'core/calendar.html', {
-        **data, 'today': today,
+        **data, 'today': today, 'feed_url': feed_url,
+        'webcal_url': feed_url.replace('https://', 'webcal://').replace('http://', 'webcal://'),
         'prev_m': f'{prev_month:%Y-%m}', 'next_m': f'{next_month:%Y-%m}', 'this_m': f'{today:%Y-%m}',
         'weekday_names': ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
     })
+
+
+def calendar_feed(request, token):
+    """File .ics cho ứng dụng lịch (không đăng nhập được nên xác thực bằng token bí mật trong link)."""
+    from .ics import build_ics
+    from .models import UserProfile
+
+    if len(token) < 20:
+        raise Http404
+    profile = UserProfile.objects.filter(calendar_token=token).select_related('user').first()
+    if not profile or not profile.user.is_active:
+        raise Http404
+    body = build_ics(profile.user, request.build_absolute_uri('/').rstrip('/'))
+    response = HttpResponse(body, content_type='text/calendar; charset=utf-8')
+    response['Content-Disposition'] = 'inline; filename="lifeos.ics"'
+    response['Cache-Control'] = 'private, max-age=900'
+    return response
+
+
+@login_required
+def calendar_token_reset(request):
+    """Tạo link lịch mới (link cũ hết hiệu lực ngay), hoặc tắt hẳn."""
+    from .ics import new_token
+    from .models import UserProfile
+
+    if request.method != 'POST':
+        return redirect('core:calendar')
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    if request.POST.get('action') == 'disable':
+        profile.calendar_token = ''
+        messages.success(request, "Đã tắt link lịch. Ứng dụng lịch đang đăng ký sẽ không cập nhật nữa.")
+    else:
+        had = bool(profile.calendar_token)
+        profile.calendar_token = new_token()
+        messages.success(request, "Đã tạo link lịch mới." + (" Link cũ không còn dùng được." if had else ""))
+    profile.save(update_fields=['calendar_token'])
+    return redirect('core:calendar')
+
+
+@login_required
+def restore_backup(request):
+    """Khôi phục từ file JSON sao lưu (POST multipart: file, mode, confirm)."""
+    from .restore import RestoreError, load_backup, restore
+
+    if request.method != 'POST':
+        return redirect('core:export')
+    upload = request.FILES.get('file')
+    mode = request.POST.get('mode', 'merge')
+    if not upload:
+        messages.error(request, "Chọn file sao lưu (.json) trước.")
+        return redirect('core:export')
+    if mode == 'replace' and request.POST.get('confirm', '').strip().upper() != 'KHOI PHUC':
+        messages.error(request, 'Chế độ thay thế sẽ xoá dữ liệu hiện tại: gõ "KHOI PHUC" để xác nhận.')
+        return redirect('core:export')
+    try:
+        counts = restore(request.user, load_backup(upload), mode)
+    except RestoreError as e:
+        messages.error(request, str(e))
+        return redirect('core:export')
+    total = sum(counts.values())
+    verb = 'Đã khôi phục' if mode == 'replace' else 'Đã thêm'
+    messages.success(request, f"{verb} {total} bản ghi từ bản sao lưu. Số dư các ví đã được tính lại.")
+    return redirect('core:export')
+
+
+# --- THÔNG BÁO ĐẨY ---
+@login_required
+def push_subscribe(request):
+    """Lưu đăng ký Web Push của trình duyệt (POST JSON: endpoint, keys.p256dh, keys.auth)."""
+    import json
+
+    from .models import PushSubscription
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data = json.loads(request.body)
+        endpoint, keys = data['endpoint'], data['keys']
+        p256dh, auth = keys['p256dh'], keys['auth']
+    except (ValueError, KeyError, TypeError):
+        return JsonResponse({'ok': False, 'error': 'Dữ liệu đăng ký không hợp lệ'}, status=400)
+    if not str(endpoint).startswith('https://') or len(endpoint) > 1000:
+        return JsonResponse({'ok': False, 'error': 'Endpoint không hợp lệ'}, status=400)
+    # Endpoint là duy nhất theo trình duyệt: đăng nhập tài khoản khác trên cùng máy thì chuyển chủ
+    PushSubscription.objects.update_or_create(endpoint=endpoint, defaults={
+        'user': request.user, 'p256dh': p256dh[:255], 'auth': auth[:255],
+        'user_agent': request.META.get('HTTP_USER_AGENT', '')[:255],
+    })
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def push_unsubscribe(request):
+    import json
+
+    from .models import PushSubscription
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        endpoint = json.loads(request.body).get('endpoint', '')
+    except ValueError:
+        endpoint = ''
+    PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def push_test(request):
+    from .push import is_configured, send_push
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    if not is_configured():
+        return JsonResponse({'ok': False, 'error': 'Máy chủ chưa cấu hình khoá VAPID'}, status=503)
+    n = send_push(request.user, '🔔 Life OS', 'Thông báo đã hoạt động trên thiết bị này!', '/', tag='test')
+    return JsonResponse({'ok': n > 0, 'delivered': n})

@@ -50,7 +50,7 @@ def wishlist_purchased_handler(sender, instance, created, **kwargs):
             category=Category.objects.filter(user=instance.user, type='expense', name='Mua sắm').first(),
             transaction_type='expense',
             amount=instance.price,
-            date=instance.purchased_date or timezone.now().date(),
+            date=instance.purchased_date or timezone.localdate(),
             note=f"Mua từ Wishlist: {instance.name}",
             source='wishlist',
             wishlist_item=instance,
@@ -65,7 +65,7 @@ def wishlist_purchased_handler(sender, instance, created, **kwargs):
             name=instance.name,
             description=instance.description,
             purchase_price=instance.price,
-            purchase_date=instance.purchased_date or timezone.now().date(),
+            purchase_date=instance.purchased_date or timezone.localdate(),
             from_wishlist=instance,
         )
 

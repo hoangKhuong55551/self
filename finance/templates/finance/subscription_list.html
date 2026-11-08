@@ -35,6 +35,7 @@
                             <td>
                                 <strong class="text-white">{{ s.name }}</strong>
                                 {% if s.is_income %}<span class="badge bg-success-subtle text-success ms-1">Thu</span>{% endif %}
+                                {% if s.is_income and s.saving_goal and s.saving_percent %}<div class="small text-info"><i class="bi bi-piggy-bank me-1"></i>Trích {{ s.saving_percent }}% vào {{ s.saving_goal.name }}</div>{% endif %}
                                 {% if not s.is_active %}<span class="badge bg-secondary-subtle text-muted ms-1">Tạm dừng</span>{% endif %}
                                 {% if s.url %}<a href="{{ s.url }}" target="_blank" class="ms-1 text-muted small"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
                             </td>

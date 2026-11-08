@@ -12,7 +12,7 @@ def get_weekly_dashboard(user):
     """
     Trả về dict dữ liệu tổng hợp cho Dashboard cuối tuần.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     week_start = today - timedelta(days=today.weekday())  # Thứ Hai
     week_end = week_start + timedelta(days=6)
 

@@ -20,6 +20,8 @@ class UserProfile(models.Model):
     hp = models.PositiveIntegerField(default=100, help_text="Health Points (max 100)")
     level = models.PositiveIntegerField(default=1)
     longest_streak = models.PositiveIntegerField(default=0)
+    # Link bí mật cho file lịch .ics (Google Calendar / điện thoại đăng ký theo link, không đăng nhập được)
+    calendar_token = models.CharField(max_length=64, blank=True, default='', db_index=True)
     last_active = models.DateField(auto_now=True)
 
     class Meta:
@@ -145,3 +147,29 @@ class WeeklyReflection(models.Model):
 
     def __str__(self):
         return f"{self.user} – tuần {self.week_start:%d/%m/%Y}"
+
+
+class PushSubscription(models.Model):
+    """Một trình duyệt/thiết bị đã bật nhận thông báo đẩy (Web Push)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.URLField(max_length=1000, unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    user_agent = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.user} · {self.user_agent[:40]}'
+
+    def as_webpush(self):
+        return {'endpoint': self.endpoint, 'keys': {'p256dh': self.p256dh, 'auth': self.auth}}
+
+
+class ReminderLog(models.Model):
+    """Đã nhắc gì cho ai (khoá duy nhất) để không gửi trùng."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reminder_logs')
+    key = models.CharField(max_length=120)
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'key'], name='unique_reminder_per_user')]

@@ -37,7 +37,7 @@ class FinanceTestCase(TestCase):
         self.wallet = Wallet.objects.create(user=self.user, name='Tiền mặt', balance=Decimal('1000000'))
         self.food = Category.objects.get(user=self.user, name='Ăn uống')
         self.salary = Category.objects.get(user=self.user, name='Lương')
-        self.today = timezone.now().date()
+        self.today = timezone.localdate()
 
     def add_txn(self, amount, kind='expense', category=None, wallet=None, day=None, note=''):
         return self.client.post(reverse('finance:transaction_list'), {

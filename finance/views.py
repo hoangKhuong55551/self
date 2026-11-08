@@ -1,3 +1,4 @@
+from django.http import FileResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -11,6 +12,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from core.editing import edit_page, is_response
+from core.templatetags.core_tags import currency_vn
 from core.notifications import invalidate_notifications
 
 from .models import (
@@ -20,11 +22,11 @@ from .models import (
 from .forms import (
     WalletForm, WalletEditForm, TransactionForm, BudgetForm, SubscriptionForm, WishlistItemForm,
     CategoryForm, TransferForm, SavingGoalForm, SavingGoalAdjustForm, TransactionFilterForm,
-    TransactionImportForm, AssetForm, WorkoutLogForm, DebtForm, DebtPaymentForm,
+    TransactionImportForm, AssetForm, WorkoutLogForm, DebtForm, DebtPaymentForm, SplitBillForm,
 )
 from .services import (
     attach_budget_forecast, category_comparison, category_spending, charge_due_subscriptions,
-    import_transactions_csv, monthly_cashflow, record_transaction, savings_rate,
+    SAVING_GOAL_XP, deposit_to_goal, import_transactions_csv, split_bill, monthly_cashflow, record_transaction, savings_rate,
     top_expenses, yearly_overview,
 )
 
@@ -45,7 +47,7 @@ def _saved(result):
 @login_required
 def finance_dashboard(request):
     """Trang chủ phân hệ Tài chính."""
-    today = timezone.now().date()
+    today = timezone.localdate()
     wallets = Wallet.objects.filter(user=request.user, is_active=True)
     total_balance = wallets.aggregate(total=Sum('balance'))['total'] or Decimal('0')
 
@@ -223,11 +225,12 @@ def transaction_list(request):
     )
 
     if request.method == 'POST':
-        form = TransactionForm(request.POST, user=request.user)
+        form = TransactionForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            record_transaction(request.user, **{
-                f: form.cleaned_data[f] for f in form.Meta.fields if f in form.cleaned_data
-            })
+            data = {f: form.cleaned_data[f] for f in form.Meta.fields if f in form.cleaned_data}
+            if not data.get('receipt'):
+                data.pop('receipt', None)
+            record_transaction(request.user, **data)
 
             messages.success(request, "Đã ghi nhận giao dịch thành công!")
             return redirect('finance:transaction_list')
@@ -254,6 +257,7 @@ def transaction_list(request):
 def transaction_edit(request, pk):
     txn = get_object_or_404(Transaction, pk=pk, user=request.user)
     old_wallet_id = txn.wallet_id
+    old_receipt = txn.receipt.name
     result = _edit_page(
         request, txn, TransactionForm, user=request.user,
         title='Sửa giao dịch', back_url=reverse('finance:transaction_list'),
@@ -265,8 +269,21 @@ def transaction_edit(request, pk):
     # Tính lại cả ví cũ lẫn ví mới (nếu đổi ví)
     for wallet in Wallet.objects.filter(pk__in={old_wallet_id, result.wallet_id}):
         wallet.recalculate_balance()
+    if old_receipt and old_receipt != result.receipt.name:
+        result.receipt.storage.delete(old_receipt)  # ảnh cũ bị thay hoặc xoá
     messages.success(request, "Đã cập nhật giao dịch, số dư ví đã được tính lại.")
     return redirect('finance:transaction_list')
+
+
+@login_required
+def transaction_receipt(request, pk):
+    """Ảnh hoá đơn: chỉ chủ giao dịch xem được (file nằm ngoài thư mục media công khai)."""
+    txn = get_object_or_404(Transaction, pk=pk, user=request.user)
+    if not txn.receipt or not txn.receipt.storage.exists(txn.receipt.name):
+        raise Http404
+    response = FileResponse(txn.receipt.open('rb'), content_type='image/jpeg')
+    response['Cache-Control'] = 'private, max-age=3600'
+    return response
 
 
 @login_required
@@ -298,7 +315,7 @@ def transaction_import(request):
 @login_required
 def transfer_list(request):
     transfers = Transfer.objects.filter(user=request.user).select_related('from_wallet', 'to_wallet')
-    form = TransferForm(request.POST or None, user=request.user, initial={'date': timezone.now().date()})
+    form = TransferForm(request.POST or None, user=request.user, initial={'date': timezone.localdate()})
     if request.method == 'POST' and form.is_valid():
         with db_transaction.atomic():
             transfer = form.save(commit=False)
@@ -327,7 +344,7 @@ def transfer_delete(request, pk):
 # --- BUDGETS ---
 @login_required
 def budget_list(request):
-    today = timezone.now().date()
+    today = timezone.localdate()
     budgets = attach_budget_forecast(Budget.objects.filter(
         user=request.user,
         year=today.year,
@@ -374,7 +391,7 @@ def budget_delete(request, pk):
 @require_POST
 def budget_copy_last_month(request):
     """Sao chép các hạn mức tháng trước sang tháng này (bỏ qua danh mục đã có)."""
-    today = timezone.now().date()
+    today = timezone.localdate()
     last = today.replace(day=1) - timedelta(days=1)
     existing = set(Budget.objects.filter(
         user=request.user, month=today.month, year=today.year
@@ -393,7 +410,7 @@ def budget_copy_last_month(request):
 # --- SUBSCRIPTIONS ---
 @login_required
 def subscription_list(request):
-    subs = Subscription.objects.filter(user=request.user).select_related('wallet', 'category').order_by('-is_active', 'next_billing_date')
+    subs = Subscription.objects.filter(user=request.user).select_related('wallet', 'category', 'saving_goal').order_by('-is_active', 'next_billing_date')
     if request.method == 'POST':
         form = SubscriptionForm(request.POST, user=request.user)
         if form.is_valid():
@@ -443,9 +460,9 @@ def subscription_edit(request, pk):
 def subscription_toggle(request, pk):
     sub = get_object_or_404(Subscription, pk=pk, user=request.user)
     sub.is_active = not sub.is_active
-    if sub.is_active and sub.next_billing_date < timezone.now().date():
+    if sub.is_active and sub.next_billing_date < timezone.localdate():
         # Kích hoạt lại: không truy thu các kỳ trong thời gian tạm dừng
-        sub.next_billing_date = timezone.now().date()
+        sub.next_billing_date = timezone.localdate()
     sub.save(update_fields=['is_active', 'next_billing_date'])
     messages.success(request, f"{'Đã kích hoạt lại' if sub.is_active else 'Đã tạm dừng'} {sub.name}.")
     return redirect('finance:subscription_list')
@@ -490,11 +507,8 @@ def saving_goal_adjust(request, pk):
     amount = form.cleaned_data['amount']
     if form.cleaned_data['action'] == 'withdraw':
         amount = -min(amount, goal.current_amount)
-    reached = goal.adjust(amount)
-    if reached:
-        if hasattr(request.user, 'profile'):
-            request.user.profile.award_xp_once(f'saving_goal:{goal.pk}', 50, f'Đạt mục tiêu tiết kiệm: {goal.name}')
-        messages.success(request, f"🎉 Đã đạt mục tiêu {goal.name}! +50 XP")
+    if deposit_to_goal(goal, amount):
+        messages.success(request, f"🎉 Đã đạt mục tiêu {goal.name}! +{SAVING_GOAL_XP} XP")
     else:
         verb = 'Đã nạp' if amount >= 0 else 'Đã rút'
         messages.success(request, f"{verb} {abs(amount):,.0f} đ — {goal.name} đạt {goal.progress_percent}%.")
@@ -577,7 +591,7 @@ def wishlist_purchase(request, pk):
         return redirect('finance:wishlist_edit', pk=pk)
     if not item.is_purchased:
         item.is_purchased = True
-        item.purchased_date = timezone.now().date()
+        item.purchased_date = timezone.localdate()
         item.save()  # Kích hoạt signal wishlist_purchased_handler!
         messages.success(request, f"🎉 Chúc mừng! Đã mua '{item.name}'. Tiền đã trừ và chuyển sang danh mục Tài sản/Dụng cụ.")
     return redirect('finance:wishlist')
@@ -630,7 +644,7 @@ WORKOUT_XP = 10
 @login_required
 def workout_list(request):
     logs = WorkoutLog.objects.filter(user=request.user).select_related('gear_used')
-    form = WorkoutLogForm(request.POST or None, user=request.user, initial={'date': timezone.now().date()})
+    form = WorkoutLogForm(request.POST or None, user=request.user, initial={'date': timezone.localdate()})
     if request.method == 'POST' and form.is_valid():
         log = form.save(commit=False)
         log.user = request.user
@@ -640,7 +654,7 @@ def workout_list(request):
         messages.success(request, f"Đã ghi {log.duration_minutes} phút {log.get_activity_type_display()}. +{WORKOUT_XP} XP")
         return redirect('finance:workout_list')
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     month_logs = logs.filter(date__year=today.year, date__month=today.month)
     month_stats = month_logs.aggregate(minutes=Sum('duration_minutes'), km=Sum('distance_km'), kcal=Sum('calories'))
     choices = dict(WorkoutLog.ACTIVITY_CHOICES)
@@ -725,7 +739,9 @@ def debt_list(request):
     open_debts.sort(key=lambda d: (d.due_date is None, d.due_date or today))
     for d in open_debts:
         d.overdue = d.is_overdue(today)
+    split_form = SplitBillForm(user=request.user, initial={'date': today, 'include_me': True})
     return render(request, 'finance/debt_list.html', {
+        'split_form': split_form,
         'open_debts': open_debts,
         'settled_debts': [d for d in debts if d.is_settled],
         'lent_total': sum((d.remaining for d in open_debts if d.is_lent), Decimal('0')),
@@ -734,6 +750,26 @@ def debt_list(request):
         'wallets': Wallet.objects.filter(user=request.user, is_active=True),
         'today': today,
     })
+
+
+@login_required
+@require_POST
+def debt_split(request):
+    """Chia tiền nhóm: phần mình thành khoản chi, phần mỗi người thành khoản cho mượn."""
+    form = SplitBillForm(request.POST, user=request.user)
+    if not form.is_valid():
+        for field, errors in form.errors.items():
+            label = form.fields[field].label if field in form.fields else ''
+            for e in errors:
+                messages.error(request, f'{label}: {e}' if label else e)
+        return redirect('finance:debt_list')
+    d = form.cleaned_data
+    txn, debts = split_bill(request.user, d['title'], d['total'], d['people'], d['include_me'],
+                            d['wallet'], d['category'], d['date'], d['due_date'])
+    who = ', '.join(f'{x.person} {currency_vn(x.amount)} đ' for x in debts)
+    mine = f' · phần của mình {currency_vn(txn.amount)} đ' if txn else ''
+    messages.success(request, f'Đã chia "{d["title"]}": {who}{mine}.')
+    return redirect('finance:debt_list')
 
 
 @login_required

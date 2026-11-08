@@ -30,7 +30,7 @@ def library_shelf(request):
                 return redirect('library:shelf')
             messages.error(request, "Không thể thêm, vui lòng kiểm tra lại thông tin.")
         elif 'set_goal' in request.POST:
-            goal_form = LibraryGoalForm(request.POST)
+            goal_form = LibraryGoalForm(request.POST, auto_id='goal_%s')
             if goal_form.is_valid():
                 LibraryGoal.objects.update_or_create(
                     user=request.user, year=year,
@@ -91,7 +91,7 @@ def library_shelf(request):
         'selected_status': status,
         'query': query,
         'add_form': QuickAddForm(),
-        'goal_form': LibraryGoalForm(),
+        'goal_form': LibraryGoalForm(auto_id='goal_%s'),
     }
     return render(request, 'library/shelf.html', context)
 

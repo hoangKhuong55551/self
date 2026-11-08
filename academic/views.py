@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, F, FloatField, ExpressionWrapper, Q
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.editing import edit_page, is_response
@@ -57,13 +58,13 @@ def academic_dashboard(request):
 @login_required
 def gpa_tracker(request):
     semesters = Semester.objects.filter(user=request.user).prefetch_related('courses')
-    sem_form = SemesterForm(user=request.user)
+    sem_form = SemesterForm(user=request.user, auto_id='sem_%s')
     course_form = CourseForm(user=request.user)
 
     if request.method == 'POST':
         # Form không hợp lệ được giữ lại để hiển thị lỗi
         if 'add_semester' in request.POST:
-            form = sem_form = SemesterForm(request.POST, user=request.user)
+            form = sem_form = SemesterForm(request.POST, user=request.user, auto_id='sem_%s')
             if form.is_valid():
                 sem = form.save(commit=False)
                 sem.user = request.user
@@ -309,3 +310,55 @@ def snippet_delete(request, pk):
     snippet.delete()
     messages.success(request, f"Đã xoá đoạn code {snippet.title}.")
     return redirect('academic:snippet_list')
+
+
+# --- THỜI KHOÁ BIỂU ---
+@login_required
+def schedule(request):
+    from .forms import ClassSessionForm
+    from .models import ClassSession
+    from .services_schedule import sessions_on
+
+    form = ClassSessionForm(request.POST or None, user=request.user)
+    if request.method == 'POST' and form.is_valid():
+        session = form.save()
+        messages.success(request, f"Đã thêm buổi {session.course.name} vào {session.get_weekday_display()}.")
+        return redirect('academic:schedule')
+
+    sessions = ClassSession.objects.filter(course__semester__user=request.user).select_related('course__semester')
+    days = [{'value': v, 'label': label, 'sessions': [s for s in sessions if s.weekday == v]}
+            for v, label in ClassSession.Weekday.choices]
+    today = timezone.localdate()
+    return render(request, 'academic/schedule.html', {
+        'form': form, 'days': days, 'today_weekday': today.weekday(),
+        'today_sessions': sessions_on(request.user, today),
+        'has_courses': form.fields['course'].queryset.exists(),
+    })
+
+
+@login_required
+def class_session_edit(request, pk):
+    from .forms import ClassSessionForm
+    from .models import ClassSession
+
+    session = get_object_or_404(ClassSession, pk=pk, course__semester__user=request.user)
+    result = edit_page(
+        request, session, ClassSessionForm, user=request.user,
+        title=f'Sửa buổi học: {session}', back_url=reverse('academic:schedule'),
+        delete_url=reverse('academic:class_session_delete', args=[pk]),
+    )
+    if is_response(result):
+        return result
+    messages.success(request, "Đã cập nhật buổi học.")
+    return redirect('academic:schedule')
+
+
+@login_required
+@require_POST
+def class_session_delete(request, pk):
+    from .models import ClassSession
+
+    session = get_object_or_404(ClassSession, pk=pk, course__semester__user=request.user)
+    session.delete()
+    messages.success(request, "Đã xoá buổi học.")
+    return redirect('academic:schedule')

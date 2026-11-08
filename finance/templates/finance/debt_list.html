@@ -118,6 +118,25 @@
                 <button type="submit" class="btn btn-primary w-100 py-2">Lưu</button>
             </form>
         </div>
+        <div class="card p-4 mt-4">
+            <h5 class="fw-bold mb-1 text-white"><i class="bi bi-people-fill me-2 text-warning"></i>Chia tiền nhóm</h5>
+            <p class="small text-muted mb-3">Bạn trả trước cho cả nhóm: phần của bạn ghi là chi tiêu, phần mỗi người thành khoản cho mượn.</p>
+            <form method="post" action="{% url 'finance:debt_split' %}">
+                {% csrf_token %}
+                {% for field in split_form %}
+                {% if field.name == 'include_me' %}
+                <div class="form-check mb-3">{{ field }}<label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                {% else %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn btn-outline-primary w-100 py-2">Chia đều &amp; ghi lại</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

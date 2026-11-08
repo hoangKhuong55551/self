@@ -18,6 +18,7 @@ urlpatterns = [
     path('transactions/', views.transaction_list, name='transaction_list'),
     path('transactions/import/', views.transaction_import, name='transaction_import'),
     path('transactions/<int:pk>/edit/', views.transaction_edit, name='transaction_edit'),
+    path('transactions/<int:pk>/receipt/', views.transaction_receipt, name='transaction_receipt'),
     path('transactions/<int:pk>/delete/', views.transaction_delete, name='transaction_delete'),
 
     path('transfers/', views.transfer_list, name='transfer_list'),
@@ -52,6 +53,7 @@ urlpatterns = [
     path('workouts/<int:pk>/delete/', views.workout_delete, name='workout_delete'),
 
     path('debts/', views.debt_list, name='debt_list'),
+    path('debts/split/', views.debt_split, name='debt_split'),
     path('debts/<int:pk>/pay/', views.debt_pay, name='debt_pay'),
     path('debts/<int:pk>/edit/', views.debt_edit, name='debt_edit'),
     path('debts/<int:pk>/delete/', views.debt_delete, name='debt_delete'),

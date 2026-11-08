@@ -2109,3 +2109,25 @@ html.fx-ready .progress.fx-bar-wait .progress-bar { transform: scaleX(0); }
 .task-checklist li { display: flex; gap: 0.4rem; align-items: flex-start; padding: 0.1rem 0; }
 .task-checklist input { margin-top: 0.2rem; cursor: pointer; }
 .task-checklist .is-done { text-decoration: line-through; color: var(--text-dim); }
+
+/* ─── Thời khoá biểu (academic/schedule.html) ─── */
+.schedule-week { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; }
+.schedule-day .card-header { font-size: 0.8rem; font-weight: 600; text-align: center; }
+.schedule-day.is-today { border-color: var(--accent-primary) !important; }
+.schedule-day.is-today .card-header { color: var(--accent-light); }
+.schedule-item {
+  display: block; padding: 0.4rem 0.5rem; border-radius: 8px;
+  background: var(--accent-primary-soft); border-left: 3px solid var(--accent-primary);
+}
+.schedule-item:hover { background: rgba(var(--accent-rgb), 0.22); }
+@media (max-width: 991.98px) {
+  .schedule-week { grid-template-columns: 1fr; }
+}
+
+/* Bật/tắt thông báo đẩy trong menu chuông */
+.push-panel {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  margin-top: 0.4rem; padding: 0.6rem 0.5rem 0.2rem; border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+.push-panel[hidden] { display: none; }

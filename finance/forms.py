@@ -1,4 +1,6 @@
 from django import forms
+from django.db import models
+from decimal import Decimal
 
 from core.forms import HttpsURLField
 from .models import Wallet, Transaction, Category, Budget, Subscription, WishlistItem, Transfer, SavingGoal, Asset, WorkoutLog, Debt, DebtPayment
@@ -49,10 +51,43 @@ class WalletEditForm(WalletForm):
         widgets = {**WalletForm.Meta.widgets, 'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'})}
 
 
+RECEIPT_MAX_BYTES = 8 * 1024 * 1024
+RECEIPT_MAX_SIDE = 1600
+
+
+def process_receipt(upload):
+    """
+    Ảnh hoá đơn: kiểm tra đúng là ảnh, xoay theo EXIF, thu nhỏ, lưu JPEG.
+    Lưu lại ảnh mới nên mọi EXIF (vị trí GPS, máy chụp...) bị bỏ.
+    """
+    from io import BytesIO
+
+    from django.core.files.base import ContentFile
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    if upload.size > RECEIPT_MAX_BYTES:
+        raise forms.ValidationError('Ảnh tối đa 8 MB.')
+    try:
+        image = Image.open(upload)
+        image.load()
+    except (UnidentifiedImageError, OSError):
+        raise forms.ValidationError('File không phải ảnh hợp lệ (JPG, PNG, WebP...).')
+    image = ImageOps.exif_transpose(image).convert('RGB')
+    image.thumbnail((RECEIPT_MAX_SIDE, RECEIPT_MAX_SIDE))
+    out = BytesIO()
+    image.save(out, 'JPEG', quality=82, optimize=True)
+    return ContentFile(out.getvalue(), name='receipt.jpg')
+
+
 class TransactionForm(forms.ModelForm):
+    receipt = forms.ImageField(
+        label='Ảnh hoá đơn (tuỳ chọn)', required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+    )
+
     class Meta:
         model = Transaction
-        fields = ['transaction_type', 'amount', 'wallet', 'category', 'date', 'note']
+        fields = ['transaction_type', 'amount', 'wallet', 'category', 'date', 'note', 'receipt']
         labels = {
             'wallet': 'Ví', 'category': 'Danh mục', 'transaction_type': 'Loại giao dịch',
             'amount': 'Số tiền (VND)', 'date': 'Ngày giao dịch', 'note': 'Ghi chú',
@@ -72,6 +107,13 @@ class TransactionForm(forms.ModelForm):
         if user:
             self.fields['wallet'].queryset = own_wallets(user, include=self.instance.wallet_id)
             self.fields['category'].queryset = Category.objects.filter(user=user)
+
+    def clean_receipt(self):
+        receipt = self.cleaned_data.get('receipt')
+        # Ảnh mới tải lên: chuẩn hoá. False = bấm "xoá ảnh"; FieldFile cũ = giữ nguyên
+        if receipt and hasattr(receipt, 'content_type'):
+            return process_receipt(receipt)
+        return receipt
 
     def clean(self):
         cleaned = super().clean()
@@ -178,14 +220,18 @@ class SubscriptionForm(forms.ModelForm):
     class Meta:
         model = Subscription
         field_classes = {'url': HttpsURLField}
-        fields = ['transaction_type', 'name', 'amount', 'wallet', 'category', 'billing_cycle', 'start_date', 'next_billing_date', 'url', 'note']
+        fields = ['transaction_type', 'name', 'amount', 'wallet', 'category', 'billing_cycle', 'start_date', 'next_billing_date',
+                  'saving_goal', 'saving_percent', 'url', 'note']
         labels = {
+            'saving_goal': 'Tự trích vào quỹ (khoản thu)', 'saving_percent': '% trích mỗi lần nhận',
             'transaction_type': 'Loại', 'name': 'Tên khoản', 'amount': 'Số tiền (VND)', 'wallet': 'Ví', 'category': 'Danh mục',
             'billing_cycle': 'Chu kỳ thanh toán', 'start_date': 'Ngày bắt đầu',
             'next_billing_date': 'Kỳ hạn kế tiếp', 'url': 'URL', 'note': 'Ghi chú',
         }
         widgets = {
             'transaction_type': forms.Select(attrs={'class': 'form-select'}),
+            'saving_goal': forms.Select(attrs={'class': 'form-select'}),
+            'saving_percent': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 100}),
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Netflix, tiền nhà, lương...'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '1000'}),
             'wallet': forms.Select(attrs={'class': 'form-select'}),
@@ -204,7 +250,11 @@ class SubscriptionForm(forms.ModelForm):
             self.fields['wallet'].queryset = own_wallets(user, include=self.instance.wallet_id)
             # Cả danh mục thu lẫn chi; clean() kiểm tra khớp với loại khoản
             self.fields['category'].queryset = Category.objects.filter(user=user).order_by('type', 'name')
+            self.fields['saving_goal'].queryset = SavingGoal.objects.filter(user=user).filter(
+                models.Q(is_completed=False) | models.Q(pk=self.instance.saving_goal_id))
         self.fields['transaction_type'].required = False  # bỏ trống = khoản chi (như trước đây)
+        self.fields['saving_goal'].empty_label = '— Không trích —'
+        self.fields['saving_percent'].required = False
 
     def clean_transaction_type(self):
         return self.cleaned_data.get('transaction_type') or Transaction.TransactionType.EXPENSE
@@ -214,6 +264,15 @@ class SubscriptionForm(forms.ModelForm):
         category, kind = cleaned.get('category'), cleaned.get('transaction_type')
         if category and kind and category.type != kind:
             self.add_error('category', 'Danh mục này thuộc loại "%s", không khớp với loại khoản.' % category.get_type_display())
+        goal, percent = cleaned.get('saving_goal'), cleaned.get('saving_percent') or 0
+        cleaned['saving_percent'] = percent
+        if goal or percent:
+            if kind != Transaction.TransactionType.INCOME:
+                self.add_error('saving_goal', 'Chỉ khoản thu (lương...) mới tự trích tiết kiệm được.')
+            elif not goal:
+                self.add_error('saving_goal', 'Chọn quỹ nhận tiền trích.')
+            elif not 1 <= percent <= 100:
+                self.add_error('saving_percent', 'Nhập từ 1 đến 100%.')
         return cleaned
 
 
@@ -285,6 +344,7 @@ class TransactionFilterForm(forms.Form):
     amount_max = forms.DecimalField(required=False, min_value=0, widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'placeholder': 'Đến (đ)'}))
 
     def __init__(self, *args, user=None, **kwargs):
+        kwargs.setdefault('auto_id', 'filter_%s')  # tránh trùng id với form thêm giao dịch cùng trang
         super().__init__(*args, **kwargs)
         if user:
             self.fields['wallet'].queryset = Wallet.objects.filter(user=user)
@@ -443,3 +503,52 @@ class DebtPaymentForm(forms.ModelForm):
         if self.debt is not None and amount > self.debt.remaining:
             raise forms.ValidationError(f'Chỉ còn {self.debt.remaining:,.0f} đ chưa trả.'.replace(',', '.'))
         return amount
+
+
+class SplitBillForm(forms.Form):
+    """Mình trả trước cho cả nhóm, chia đều: phần mình là chi tiêu, phần mỗi người là khoản cho mượn."""
+    title = forms.CharField(label='Khoản gì', max_length=120,
+                            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ăn lẩu tối thứ 6'}))
+    total = forms.DecimalField(label='Tổng tiền mình đã trả (VND)', min_value=Decimal('1'), max_digits=15, decimal_places=0,
+                               widget=forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}))
+    people = forms.CharField(
+        label='Chia với ai', help_text='Mỗi người một dòng, hoặc cách nhau bằng dấu phẩy.',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Nam, Lan, Minh'}),
+    )
+    include_me = forms.BooleanField(label='Tính cả phần của mình', required=False, initial=True,
+                                    widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    wallet = forms.ModelChoiceField(label='Trả bằng ví', queryset=Wallet.objects.none(),
+                                    widget=forms.Select(attrs={'class': 'form-select'}))
+    category = forms.ModelChoiceField(label='Danh mục phần của mình', queryset=Category.objects.none(), required=False,
+                                      widget=forms.Select(attrs={'class': 'form-select'}))
+    date = forms.DateField(label='Ngày', widget=date_input())
+    due_date = forms.DateField(label='Hẹn trả (tuỳ chọn)', required=False, widget=date_input())
+
+    def __init__(self, *args, user=None, **kwargs):
+        kwargs.setdefault('auto_id', 'split_%s')  # cùng trang với form ghi nợ
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['wallet'].queryset = own_wallets(user)
+            self.fields['category'].queryset = Category.objects.filter(user=user, type='expense')
+        self.fields['category'].empty_label = '— Chưa phân loại —'
+
+    def clean_people(self):
+        import re
+        names = [n.strip() for n in re.split(r'[,\n;]+', self.cleaned_data['people']) if n.strip()]
+        if not names:
+            raise forms.ValidationError('Nhập ít nhất một người.')
+        if len(names) > 30:
+            raise forms.ValidationError('Tối đa 30 người.')
+        if any(len(n) > 120 for n in names):
+            raise forms.ValidationError('Tên quá dài.')
+        return names
+
+    def clean(self):
+        cleaned = super().clean()
+        date, due = cleaned.get('date'), cleaned.get('due_date')
+        if date and due and due < date:
+            self.add_error('due_date', 'Ngày hẹn trả phải sau ngày chia.')
+        people, total = cleaned.get('people'), cleaned.get('total')
+        if people and total is not None and total < len(people) + (1 if cleaned.get('include_me') else 0):
+            self.add_error('total', 'Tổng tiền quá nhỏ để chia.')
+        return cleaned

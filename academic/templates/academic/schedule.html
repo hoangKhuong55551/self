@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Thời khoá biểu | Life OS{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">🗓️ Thời khoá biểu</h2>
+        <p class="text-muted mb-0 small">Buổi học lặp lại hằng tuần, hiện trên Dashboard, trang Lịch và lịch điện thoại (.ics).</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'academic:dashboard' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Học tập</a>
+        <a href="{% url 'academic:gpa_tracker' %}" class="btn btn-sm btn-outline-secondary">Môn học &amp; học kỳ</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-sun me-2 text-warning"></i>Hôm nay</div>
+            <ul class="list-group list-group-flush">
+                {% for s in today_sessions %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span><strong class="text-white">{{ s.course.name }}</strong>{% if s.note %} <small class="text-muted">· {{ s.note }}</small>{% endif %}</span>
+                    <span class="text-muted small text-nowrap">{{ s.start_time|time:"H:i" }}–{{ s.end_time|time:"H:i" }}{% if s.room %} · {{ s.room }}{% endif %}</span>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted small">Hôm nay không có buổi học nào.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="schedule-week">
+            {% for d in days %}
+            <div class="card schedule-day {% if d.value == today_weekday %}is-today{% endif %}">
+                <div class="card-header py-2">{{ d.label }}</div>
+                <div class="p-2 d-flex flex-column gap-2">
+                    {% for s in d.sessions %}
+                    <a href="{% url 'academic:class_session_edit' s.pk %}" class="schedule-item text-decoration-none">
+                        <div class="small fw-semibold text-white">{{ s.course.name }}</div>
+                        <div class="small text-muted">{{ s.start_time|time:"H:i" }}–{{ s.end_time|time:"H:i" }}{% if s.room %} · {{ s.room }}{% endif %}</div>
+                        {% if not s.course.semester.is_current and not s.course.semester.start_date %}<div class="small text-warning">Học kỳ không phải kỳ hiện tại</div>{% endif %}
+                    </a>
+                    {% empty %}
+                    <div class="small text-muted px-1">—</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3 text-white"><i class="bi bi-plus-circle me-2 text-primary"></i>Thêm buổi học</h5>
+            {% if has_courses %}
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100 py-2">Thêm vào thời khoá biểu</button>
+            </form>
+            {% else %}
+            <p class="small text-muted mb-2">Chưa có môn học nào đang học.</p>
+            <a href="{% url 'academic:gpa_tracker' %}" class="btn btn-sm btn-primary">Thêm môn học</a>
+            {% endif %}
+            <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Lịch chỉ hiện cho học kỳ hiện tại, hoặc học kỳ có ngày bắt đầu/kết thúc (đặt ở phần sửa học kỳ).</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

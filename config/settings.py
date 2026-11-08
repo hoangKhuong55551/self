@@ -125,6 +125,16 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+# File riêng tư (ảnh hoá đơn): không phục vụ qua URL tĩnh, chỉ qua view có kiểm tra quyền
+PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
+
+# Web Push (thông báo đẩy). Tạo khoá: python manage.py generate_vapid_keys
+VAPID_PUBLIC_KEY = os.environ.get('DJANGO_VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('DJANGO_VAPID_PRIVATE_KEY', '')
+VAPID_SUBJECT = os.environ.get('DJANGO_VAPID_SUBJECT', 'mailto:admin@lifeos.local')
+# Gửi tóm tắt việc trong ngày lúc mấy giờ (giờ địa phương)
+REMINDER_DIGEST_HOUR = 8
+REMINDER_MINUTES_BEFORE = 15
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

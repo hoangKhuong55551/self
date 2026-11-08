@@ -25,7 +25,7 @@ def productivity_dashboard(request):
     tasks_done = Task.objects.filter(goal__user=request.user, status='done').order_by('-completed_at')[:5]
 
     habits = Habit.objects.filter(user=request.user, is_active=True).prefetch_related('logs')
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     # Thống kê habit hôm nay
     today_habits = []
@@ -91,7 +91,7 @@ def kanban_board(request):
         'done_tasks': done_tasks,
         'form': form,
         'has_goals': user_goals.exists(),
-        'today_str': timezone.now().date().isoformat(),
+        'today_str': timezone.localdate().isoformat(),
     }
     return render(request, 'productivity/kanban_board.html', context)
 
@@ -221,7 +221,7 @@ def habit_delete(request, pk):
 @login_required
 def habit_tracker(request):
     habits = Habit.objects.filter(user=request.user)
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     if request.method == 'POST':
         form = HabitForm(request.POST)
@@ -325,7 +325,7 @@ def _build_year_heatmap(user, habit_count, today, weeks=53):
 def toggle_habit_today(request, pk):
     """Đánh dấu hoàn thành/hủy hoàn thành habit hôm nay."""
     habit = get_object_or_404(Habit, pk=pk, user=request.user)
-    today = timezone.now().date()
+    today = timezone.localdate()
     log, created = HabitLog.objects.get_or_create(
         habit=habit, date=today,
         defaults={'count': habit.target_per_day, 'completed': True}

@@ -1,6 +1,6 @@
 /* Life OS service worker: network-first, cache chỉ dùng khi mất mạng. */
 {% url 'admin:index' as admin_url %}const ADMIN_PREFIX = '{{ admin_url|escapejs }}';
-const CACHE = 'lifeos-v3';
+const CACHE = 'lifeos-v4';
 const OFFLINE_URL = '/offline/';
 const PRECACHE = [OFFLINE_URL, '/static/icons/icon-192.png'];
 
@@ -16,6 +16,34 @@ self.addEventListener('activate', event => {
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// Thông báo đẩy (nhắc việc) từ máy chủ
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data && event.data.text() }; }
+  event.waitUntil(self.registration.showNotification(data.title || 'Life OS', {
+    body: data.body || '',
+    tag: data.tag || undefined,
+    icon: '/static/icons/icon-192.png',
+    badge: '/static/icons/icon-192.png',
+    data: { url: data.url || '/' },
+  }));
+});
+
+// Bấm vào thông báo: mở (hoặc chuyển tới) trang liên quan
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const client of list) {
+      if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+        client.navigate(target);
+        return client.focus();
+      }
+    }
+    return clients.openWindow(target);
+  }));
 });
 
 self.addEventListener('fetch', event => {

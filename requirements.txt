@@ -6,3 +6,5 @@ python-dotenv>=1.0,<2
 Markdown>=3.5,<4
 nh3>=0.2,<0.4
 django-axes>=9.0,<10
+# Thông báo đẩy (Web Push, VAPID)
+pywebpush>=2.0,<3

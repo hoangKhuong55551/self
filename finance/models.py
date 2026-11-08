@@ -1,10 +1,42 @@
+import os
+import uuid
+
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.files.storage import FileSystemStorage
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from decimal import Decimal
+
+
+# Ảnh hoá đơn là dữ liệu riêng tư: lưu ngoài MEDIA_ROOT (không có URL công khai),
+# chỉ trả về qua view kiểm tra chủ sở hữu (finance:transaction_receipt).
+class PrivateStorage(FileSystemStorage):
+    """Đọc PRIVATE_MEDIA_ROOT mỗi lần dùng (không cố định lúc nạp model) để đổi được theo settings/test."""
+
+    def __init__(self):
+        super().__init__(base_url=None)
+
+    @property
+    def base_location(self):
+        return settings.PRIVATE_MEDIA_ROOT
+
+    @property
+    def location(self):
+        return os.path.abspath(self.base_location)
+
+
+def private_storage():
+    # Hàm (không phải instance) để migration không ghi cứng đường dẫn tuyệt đối của máy
+    return PrivateStorage()
+
+
+def receipt_path(instance, filename):
+    return f'receipts/{instance.user_id}/{uuid.uuid4().hex}.jpg'
 
 
 class Wallet(models.Model):
@@ -131,8 +163,9 @@ class Transaction(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal('0.01'))]
     )
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     note = models.TextField(blank=True, default='')
+    receipt = models.FileField(storage=private_storage, upload_to=receipt_path, blank=True, default='')
     source = models.CharField(
         max_length=15,
         choices=Source.choices,
@@ -189,7 +222,7 @@ class Transfer(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal('0.01'))]
     )
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     note = models.CharField(max_length=200, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -331,6 +364,13 @@ class Subscription(models.Model):
     icon = models.CharField(max_length=50, blank=True, default='')
     url = models.URLField(blank=True, default='')
     note = models.TextField(blank=True, default='')
+    # Khoản thu: tự trích % vào quỹ tiết kiệm mỗi lần nhận
+    saving_goal = models.ForeignKey(
+        'SavingGoal', on_delete=models.SET_NULL, null=True, blank=True, related_name='auto_sources',
+    )
+    saving_percent = models.PositiveSmallIntegerField(
+        default=0, validators=[MaxValueValidator(100)], help_text='% số tiền nhận được chuyển vào quỹ',
+    )
 
     class Meta:
         ordering = ['next_billing_date']
@@ -482,7 +522,7 @@ class SavingGoal(models.Model):
         """Số tiền cần để dành mỗi tháng để kịp hạn (None nếu không có hạn hoặc đã đạt)."""
         if not self.deadline or self.is_completed:
             return None
-        today = timezone.now().date()
+        today = timezone.localdate()
         months_left = max((self.deadline.year - today.year) * 12 + self.deadline.month - today.month, 1)
         return round(self.remaining / months_left, 0)
 
@@ -589,7 +629,7 @@ class WorkoutLog(models.Model):
         on_delete=models.CASCADE,
         related_name='workout_logs'
     )
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     activity_type = models.CharField(
         max_length=20,
         choices=ACTIVITY_CHOICES
@@ -633,7 +673,7 @@ class Debt(models.Model):
         Wallet, on_delete=models.RESTRICT, null=True, blank=True, related_name='debts',
         help_text='Bỏ trống nếu không muốn ảnh hưởng số dư ví',
     )
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     due_date = models.DateField(null=True, blank=True)
     note = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -682,7 +722,7 @@ class DebtPayment(models.Model):
     debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     wallet = models.ForeignKey(Wallet, on_delete=models.RESTRICT, null=True, blank=True, related_name='debt_payments')
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     note = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -691,3 +731,10 @@ class DebtPayment(models.Model):
 
     def __str__(self):
         return f'{self.debt.title}: {self.amount:,.0f}'
+
+
+@receiver(post_delete, sender=Transaction)
+def delete_receipt_file(sender, instance, **kwargs):
+    """Xoá giao dịch (kể cả khi xoá tài khoản) thì xoá luôn ảnh hoá đơn trên đĩa."""
+    if instance.receipt:
+        instance.receipt.storage.delete(instance.receipt.name)

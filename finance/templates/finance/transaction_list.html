@@ -58,6 +58,7 @@
                                 <span class="text-white">{{ t.note }}</span>
                                 {% if t.source == 'subscription' %}<span class="badge bg-warning-subtle text-warning ms-1">Định kỳ</span>{% endif %}
                                 {% if t.source == 'wishlist' %}<span class="badge bg-info-subtle text-info ms-1">Wishlist</span>{% endif %}
+                                {% if t.receipt %}<a href="{% url 'finance:transaction_receipt' t.pk %}" target="_blank" rel="noopener" class="ms-1 text-info" title="Xem ảnh hoá đơn" aria-label="Xem ảnh hoá đơn"><i class="bi bi-paperclip"></i></a>{% endif %}
                             </td>
                             <td class="text-end fw-bold text-nowrap {% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
                                 {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}{{ t.amount|currency_vn }} đ
@@ -95,7 +96,7 @@
     <div class="col-lg-4">
         <div class="card p-4">
             <h5 class="fw-bold mb-3 text-white"><i class="bi bi-plus-circle me-2 text-primary"></i>Ghi nhận giao dịch</h5>
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 {% for field in form %}
                 <div class="mb-3">

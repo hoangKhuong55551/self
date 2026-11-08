@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from core.notifications import invalidate_notifications
 
-from .models import Budget, Category, Subscription, Transaction, Wallet
+from .models import Budget, Category, SavingGoal, Subscription, Transaction, Wallet
 
 # Giới hạn số kỳ bù mỗi lần chạy, tránh vòng lặp vô hạn với dữ liệu hỏng
 MAX_CATCH_UP_CYCLES = 60
@@ -40,6 +40,29 @@ def check_budget_and_penalize(user, txn):
         hp_loss = min(int(overspent_ratio * 20), 30)
         if hp_loss > 0 and hasattr(user, 'profile'):
             user.profile.lose_hp(hp_loss)
+
+
+SAVING_GOAL_XP = 50
+
+
+def deposit_to_goal(goal, amount):
+    """Nạp (amount > 0) / rút (amount < 0) quỹ tiết kiệm; đạt mục tiêu lần đầu thì +XP. Trả về True nếu vừa đạt."""
+    reached = goal.adjust(amount)
+    if reached and hasattr(goal.user, 'profile'):
+        goal.user.profile.award_xp_once(f'saving_goal:{goal.pk}', SAVING_GOAL_XP, f'Đạt mục tiêu tiết kiệm: {goal.name}')
+    return reached
+
+
+def auto_save_share(sub, amount):
+    """Khoản thu định kỳ có cài trích tiết kiệm: chuyển saving_percent% vào quỹ. Trả về số đã trích."""
+    if not (sub.is_income and sub.saving_goal_id and sub.saving_percent):
+        return Decimal('0')
+    share = (amount * sub.saving_percent / 100).quantize(Decimal('1'))
+    goal = SavingGoal.objects.filter(pk=sub.saving_goal_id, user_id=sub.user_id).first()
+    if not goal or share <= 0:
+        return Decimal('0')
+    deposit_to_goal(goal, share)
+    return share
 
 
 def apply_to_wallet(txn):
@@ -98,6 +121,7 @@ def charge_due_subscriptions(subscriptions, today=None):
                     subscription=sub,
                 )
                 apply_to_wallet(txn)
+                auto_save_share(sub, sub.amount)
             check_budget_and_penalize(sub.user, txn)
             count += 1
     return count
@@ -108,7 +132,7 @@ def monthly_cashflow(user, months=12, today=None):
     Thu/chi theo từng tháng trong `months` tháng gần nhất (kể cả tháng hiện tại),
     tháng không có giao dịch vẫn có mặt với giá trị 0.
     """
-    today = today or timezone.now().date()
+    today = today or timezone.localdate()
     first = today.replace(day=1) - relativedelta(months=months - 1)
     rows = (
         Transaction.objects.filter(user=user, date__gte=first, date__lte=today)
@@ -168,7 +192,7 @@ def attach_budget_forecast(budgets, today=None):
     Gắn dự báo chi cuối tháng vào từng Budget (theo tốc độ chi trung bình mỗi ngày tới hôm nay).
     Chỉ dự báo cho tháng hiện tại; tháng khác `projected` là None.
     """
-    today = today or timezone.now().date()
+    today = today or timezone.localdate()
     days_in_month = calendar.monthrange(today.year, today.month)[1]
     for budget in budgets:
         budget.projected = None
@@ -431,3 +455,40 @@ def top_expenses(user, year, month, limit=5):
     return (Transaction.objects.filter(
         user=user, transaction_type=Transaction.TransactionType.EXPENSE, date__year=year, date__month=month,
     ).select_related('category', 'wallet').order_by('-amount', '-date')[:limit])
+
+
+def split_shares(total, people_count, include_me):
+    """Chia đều tới đồng; phần lẻ cộng vào phần của mình (hoặc người đầu tiên nếu không tính mình)."""
+    n = people_count + (1 if include_me else 0)
+    base = (total // n).quantize(Decimal('1'))
+    remainder = total - base * n
+    shares = [base] * people_count
+    mine = base + remainder if include_me else Decimal('0')
+    if not include_me:
+        shares[0] += remainder
+    return mine, shares
+
+
+def split_bill(user, title, total, people, include_me, wallet, category, date, due_date=None):
+    """
+    Mình trả trước `total` cho cả nhóm từ `wallet`:
+      - phần của mình: một giao dịch chi
+      - phần mỗi người: một khoản cho mượn (Debt) gắn ví, nên số dư ví giảm đúng `total`.
+    Trả về (giao dịch | None, danh sách Debt).
+    """
+    from .models import Debt
+
+    mine, shares = split_shares(total, len(people), include_me)
+    with db_transaction.atomic():
+        txn = None
+        if mine > 0:
+            txn = record_transaction(
+                user, wallet=wallet, category=category, transaction_type=Transaction.TransactionType.EXPENSE,
+                amount=mine, date=date, note=f'{title} (phần của mình)',
+            )
+        debts = [Debt.objects.create(
+            user=user, person=name, direction=Debt.Direction.LENT, amount=share, wallet=wallet,
+            date=date, due_date=due_date, note=f'Chia tiền: {title}',
+        ) for name, share in zip(people, shares)]
+        wallet.recalculate_balance()
+    return txn, debts

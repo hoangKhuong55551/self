@@ -66,7 +66,7 @@ class ProductivityEditTest(TestCase):
 
     def test_habit_pause_keeps_history_and_delete_removes_it(self):
         habit = Habit.objects.create(user=self.user, name='Đọc sách')
-        HabitLog.objects.create(habit=habit, date=timezone.now().date(), completed=True)
+        HabitLog.objects.create(habit=habit, date=timezone.localdate(), completed=True)
         self.client.post(reverse('productivity:habit_edit', args=[habit.pk]), {
             'name': 'Đọc sách 30p', 'frequency': habit.frequency, 'target_per_day': 1, 'icon': '📚', 'color': '#ffffff',
         })

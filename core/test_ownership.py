@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import URLPattern, URLResolver, get_resolver, reverse
 
-from academic.models import CodeSnippet, Course, Note, Semester
+from academic.models import ClassSession, CodeSnippet, Course, Note, Semester
 from finance.models import (
     Asset, Budget, Category, Debt, DebtPayment, SavingGoal, Subscription, Transaction, Transfer, Wallet, WishlistItem,
     WorkoutLog,
@@ -56,7 +56,9 @@ def make_objects(user):
         'productivity:habit': Habit.objects.create(user=user, name='Habit A'),
         'productivity:toggle_habit': Habit.objects.create(user=user, name='Habit A2'),
         'academic:semester': semester,
-        'academic:course': Course.objects.create(semester=semester, name='Môn A'),
+        'academic:course': (course := Course.objects.create(semester=semester, name='Môn A')),
+        'academic:class_session': ClassSession.objects.create(
+            course=course, weekday=0, start_time='07:00', end_time='09:00', room='A1'),
         'academic:note': Note.objects.create(user=user, title='Ghi chú A', content='bí mật'),
         'academic:snippet': CodeSnippet.objects.create(user=user, title='Snippet A', code='print(1)'),
         'library:item': MediaItem.objects.create(user=user, title='Sách A'),

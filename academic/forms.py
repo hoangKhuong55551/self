@@ -1,16 +1,20 @@
 from django import forms
-from .models import Semester, Course, Tag, Note, CodeSnippet
+from django.db import models
+from .models import ClassSession, Semester, Course, Tag, Note, CodeSnippet
 
 class SemesterForm(forms.ModelForm):
     class Meta:
         model = Semester
-        fields = ['name', 'year', 'term', 'is_current']
-        labels = {'name': 'Tên học kỳ', 'year': 'Năm học', 'term': 'Kỳ', 'is_current': 'Đặt làm kỳ hiện tại'}
+        fields = ['name', 'year', 'term', 'is_current', 'start_date', 'end_date']
+        labels = {'name': 'Tên học kỳ', 'year': 'Năm học', 'term': 'Kỳ', 'is_current': 'Đặt làm kỳ hiện tại',
+                  'start_date': 'Ngày bắt đầu học (tuỳ chọn)', 'end_date': 'Ngày kết thúc (tuỳ chọn)'}
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: Học kỳ 1 (2025 - 2026)'}),
             'year': forms.NumberInput(attrs={'class': 'form-control', 'min': 2020, 'max': 2035}),
             'term': forms.Select(attrs={'class': 'form-select'}),
             'is_current': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'end_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
         }
 
     def __init__(self, *args, **kwargs):
@@ -20,6 +24,9 @@ class SemesterForm(forms.ModelForm):
     def clean(self):
         # Ràng buộc unique (user, year, term) không được form tự kiểm vì 'user' không nằm trong fields
         cleaned = super().clean()
+        start, end = cleaned.get('start_date'), cleaned.get('end_date')
+        if start and end and end < start:
+            self.add_error('end_date', 'Ngày kết thúc phải sau ngày bắt đầu.')
         exists = self.user and Semester.objects.filter(
             user=self.user, year=cleaned.get('year'), term=cleaned.get('term')
         ).exclude(pk=self.instance.pk).exists()
@@ -123,3 +130,34 @@ class CodeSnippetForm(TaggedForm):
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Mô tả công dụng hoặc cách dùng...'}),
             'tags': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '4'}),
         }
+
+
+class ClassSessionForm(forms.ModelForm):
+    class Meta:
+        model = ClassSession
+        fields = ['course', 'weekday', 'start_time', 'end_time', 'room', 'note']
+        labels = {'course': 'Môn học', 'weekday': 'Thứ', 'start_time': 'Bắt đầu', 'end_time': 'Kết thúc',
+                  'room': 'Phòng', 'note': 'Ghi chú'}
+        widgets = {
+            'course': forms.Select(attrs={'class': 'form-select'}),
+            'weekday': forms.Select(attrs={'class': 'form-select'}),
+            'start_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}, format='%H:%M'),
+            'end_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}, format='%H:%M'),
+            'room': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'A2-301'}),
+            'note': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Lý thuyết / Thực hành...'}),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            # Môn chưa hoàn thành, ưu tiên học kỳ hiện tại
+            self.fields['course'].queryset = Course.objects.filter(semester__user=user).filter(
+                models.Q(is_completed=False) | models.Q(pk=self.instance.course_id)
+            ).select_related('semester').order_by('-semester__is_current', '-semester__year', 'name')
+
+    def clean(self):
+        cleaned = super().clean()
+        start, end = cleaned.get('start_time'), cleaned.get('end_time')
+        if start and end and end <= start:
+            self.add_error('end_time', 'Giờ kết thúc phải sau giờ bắt đầu.')
+        return cleaned

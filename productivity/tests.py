@@ -66,7 +66,7 @@ class HabitHeatmapTest(TestCase):
         self.user = User.objects.create_user(username='heat', password='password123')
         self.client = Client()
         self.client.login(username='heat', password='password123')
-        self.today = timezone.now().date()
+        self.today = timezone.localdate()
         h1 = Habit.objects.create(user=self.user, name='A')
         h2 = Habit.objects.create(user=self.user, name='B')
         # Hôm qua và hôm kia làm cả hai, hôm nay chưa check-in, cách 5 ngày làm một

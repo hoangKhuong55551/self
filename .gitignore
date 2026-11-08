@@ -21,3 +21,6 @@ ENV/
 .idea/
 .vscode/
 *.swp
+
+# Ảnh hoá đơn (riêng tư)
+private_media/

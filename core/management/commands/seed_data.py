@@ -50,7 +50,7 @@ class Command(BaseCommand):
         profile.longest_streak = 14
         profile.save()
 
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         # 1. FINANCE SEED
         w_bank, _ = Wallet.objects.get_or_create(

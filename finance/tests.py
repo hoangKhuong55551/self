@@ -115,7 +115,7 @@ class BudgetTest(TestCase):
         self.client.login(username='budgeter', password='password123')
         self.wallet = Wallet.objects.create(user=self.user, name='Ví', balance=Decimal('10000000'))
         self.food = Category.objects.create(user=self.user, name='Ăn uống', type='expense')
-        self.today = timezone.now().date()
+        self.today = timezone.localdate()
         self.budget = Budget.objects.create(
             user=self.user, category=self.food, month=self.today.month, year=self.today.year,
             amount=Decimal('1000'),
@@ -201,7 +201,7 @@ class SubscriptionTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='subber', password='password123')
         self.wallet = Wallet.objects.create(user=self.user, name='Ví', balance=Decimal('1000000'))
-        self.today = timezone.now().date()
+        self.today = timezone.localdate()
 
     def _sub(self, cycle='monthly', next_date=None, active=True):
         return Subscription.objects.create(

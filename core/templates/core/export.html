@@ -33,4 +33,68 @@
         </div>
     </div>
 </div>
+
+<div class="card mt-4" id="restore">
+    <div class="card-header"><i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>Khôi phục từ file sao lưu</div>
+    <div class="card-body">
+        <form method="post" action="{% url 'core:restore' %}" enctype="multipart/form-data" id="restoreForm">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <label class="form-label" for="restoreFile">File JSON đã tải ở trên</label>
+                    <input type="file" name="file" id="restoreFile" class="form-control" accept=".json,application/json" required>
+                    <div id="restorePreview" class="small text-muted mt-2"></div>
+                </div>
+                <div class="col-lg-6">
+                    <label class="form-label">Cách khôi phục</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" id="modeMerge" value="merge" checked>
+                        <label class="form-check-label" for="modeMerge"><strong>Gộp thêm</strong> — giữ dữ liệu hiện tại, thêm dữ liệu trong file (không đổi XP, huy hiệu). Ví, danh mục, học kỳ trùng tên được gộp chung. Dùng khi chuyển dữ liệu từ tài khoản khác: gộp lại chính bản sao lưu của tài khoản này sẽ nhân đôi giao dịch.</label>
+                    </div>
+                    <div class="form-check mt-1">
+                        <input class="form-check-input" type="radio" name="mode" id="modeReplace" value="replace">
+                        <label class="form-check-label" for="modeReplace"><strong>Thay thế toàn bộ</strong> — xoá dữ liệu hiện tại rồi khôi phục y như bản sao lưu</label>
+                    </div>
+                    <div id="replaceConfirm" class="mt-2" hidden>
+                        <div class="alert alert-warning small mb-2 py-2"><i class="bi bi-exclamation-triangle me-1"></i>Dữ liệu hiện tại sẽ bị xoá. Hãy <a href="{% url 'core:export_download' 'json' %}">tải bản sao lưu hiện tại</a> trước.</div>
+                        <input type="text" name="confirm" class="form-control" placeholder='Gõ "KHOI PHUC" để xác nhận' autocomplete="off" aria-label="Xác nhận khôi phục">
+                    </div>
+                </div>
+            </div>
+            <p class="small text-muted mt-3 mb-2"><i class="bi bi-info-circle me-1"></i>Ảnh (hoá đơn, bìa sách, avatar) không nằm trong file sao lưu. Số dư ví được tính lại theo lịch sử giao dịch.</p>
+            <button type="submit" class="btn btn-warning"><i class="bi bi-upload me-1"></i> Khôi phục</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const LABELS = {
+        'finance.Wallet': 'ví', 'finance.Transaction': 'giao dịch', 'finance.Category': 'danh mục',
+        'finance.Subscription': 'khoản định kỳ', 'finance.Debt': 'khoản vay/mượn', 'finance.Budget': 'ngân sách',
+        'productivity.Goal': 'mục tiêu', 'productivity.Task': 'task', 'productivity.Habit': 'thói quen',
+        'academic.Course': 'môn học', 'academic.Note': 'ghi chú', 'library.MediaItem': 'mục thư viện',
+    };
+    const file = document.getElementById('restoreFile');
+    const preview = document.getElementById('restorePreview');
+    file?.addEventListener('change', () => {
+        preview.textContent = '';
+        const f = file.files[0];
+        if (!f) return;
+        f.text().then(text => {
+            const data = JSON.parse(text);
+            const parts = Object.entries(LABELS)
+                .map(([k, label]) => [(data.models?.[k] || []).length, label])
+                .filter(([n]) => n).map(([n, label]) => `${n} ${label}`);
+            const when = data.exported_at ? new Date(data.exported_at).toLocaleString('vi-VN') : '?';
+            preview.textContent = `Sao lưu lúc ${when} (tài khoản ${data.username || '?'}): ` + (parts.join(', ') || 'không có dữ liệu');
+        }).catch(() => { preview.textContent = 'Không đọc được file: có phải bản sao lưu JSON của Life OS?'; });
+    });
+    document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => {
+        document.getElementById('replaceConfirm').hidden = !document.getElementById('modeReplace').checked;
+    }));
+})();
+</script>
 {% endblock %}

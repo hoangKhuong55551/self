@@ -20,6 +20,9 @@ class Semester(models.Model):
     year = models.PositiveIntegerField()
     term = models.CharField(max_length=10, choices=Term.choices)
     is_current = models.BooleanField(default=False)
+    # Khoảng thời gian học (tuỳ chọn): giới hạn lịch học trên trang Lịch và file .ics
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['-year', 'term']
@@ -203,3 +206,36 @@ class CodeSnippet(models.Model):
 
     def __str__(self):
         return f"💻 [{self.language}] {self.title}"
+
+
+class ClassSession(models.Model):
+    """Một buổi học lặp lại hằng tuần của môn học (thời khoá biểu)."""
+
+    class Weekday(models.IntegerChoices):
+        MON = 0, 'Thứ 2'
+        TUE = 1, 'Thứ 3'
+        WED = 2, 'Thứ 4'
+        THU = 3, 'Thứ 5'
+        FRI = 4, 'Thứ 6'
+        SAT = 5, 'Thứ 7'
+        SUN = 6, 'Chủ nhật'
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='class_sessions')
+    weekday = models.PositiveSmallIntegerField(choices=Weekday.choices)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    room = models.CharField(max_length=60, blank=True, default='')
+    note = models.CharField(max_length=120, blank=True, default='')
+
+    class Meta:
+        ordering = ['weekday', 'start_time']
+
+    def __str__(self):
+        return f'{self.course.name} · {self.get_weekday_display()} {self.start_time:%H:%M}'
+
+    def runs_on(self, day):
+        """Buổi học có diễn ra vào ngày `day` không (đúng thứ, trong khoảng học kỳ nếu có)."""
+        sem = self.course.semester
+        return (day.weekday() == self.weekday
+                and (sem.start_date is None or day >= sem.start_date)
+                and (sem.end_date is None or day <= sem.end_date))

@@ -211,6 +211,71 @@ document.addEventListener('change', function (e) {
     .finally(() => { box.disabled = false; });
 });
 
+// ─────────────────────────────────────────────
+// 12. Thông báo đẩy: bật/tắt trên thiết bị này (menu chuông)
+// ─────────────────────────────────────────────
+(function () {
+  const key = document.querySelector('meta[name="vapid-key"]')?.content;
+  const panel = document.getElementById('pushPanel');
+  if (!key || !panel || !('serviceWorker' in navigator) || !('PushManager' in window) || !window.isSecureContext) return;
+  const status = document.getElementById('pushStatus');
+  const toggle = document.getElementById('pushToggleBtn');
+  const test = document.getElementById('pushTestBtn');
+  const token = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const post = (url, body) => fetch(url, {
+    method: 'POST', body: body ? JSON.stringify(body) : undefined,
+    headers: { 'X-CSRFToken': token(), 'Content-Type': 'application/json', 'Accept': 'application/json' },
+  }).then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok && d.ok !== false, ...d })));
+  const toKey = b64 => {
+    const s = atob((b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(s, c => c.charCodeAt(0));
+  };
+
+  async function current() {
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.getSubscription();
+  }
+  async function render() {
+    const sub = await current();
+    const denied = Notification.permission === 'denied';
+    panel.hidden = false;
+    status.textContent = denied ? 'Thông báo bị chặn trong cài đặt trình duyệt'
+      : sub ? 'Đang nhận nhắc việc trên thiết bị này' : 'Nhận nhắc việc trên thiết bị này';
+    toggle.textContent = sub ? 'Tắt' : 'Bật';
+    toggle.disabled = denied;
+    toggle.classList.toggle('btn-primary', !sub);
+    toggle.classList.toggle('btn-outline-secondary', !!sub);
+    test.hidden = !sub;
+  }
+  toggle.addEventListener('click', async () => {
+    toggle.disabled = true;
+    try {
+      const sub = await current();
+      if (sub) {
+        await post('/push/unsubscribe/', { endpoint: sub.endpoint });
+        await sub.unsubscribe();
+        showToast('Đã tắt thông báo trên thiết bị này', 'info');
+      } else {
+        if (await Notification.requestPermission() !== 'granted') { showToast('Bạn chưa cho phép thông báo', 'warning'); return; }
+        const reg = await navigator.serviceWorker.ready;
+        const fresh = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(key) });
+        const res = await post('/push/subscribe/', fresh.toJSON());
+        showToast(res.ok ? 'Đã bật nhắc việc trên thiết bị này' : (res.error || 'Không bật được'), res.ok ? 'success' : 'danger');
+      }
+    } catch (e) {
+      showToast('Không bật được thông báo: ' + (e.message || e), 'danger');
+    } finally {
+      toggle.disabled = false;
+      render();
+    }
+  });
+  test.addEventListener('click', async () => {
+    const res = await post('/push/test/');
+    showToast(res.ok ? 'Đã gửi, xem thông báo của máy' : (res.error || 'Gửi không thành công'), res.ok ? 'success' : 'danger');
+  });
+  render();
+})();
+
 // Gỡ skeleton khi Chart.js vẽ xong lần đầu
 if (window.Chart) {
   Chart.register({

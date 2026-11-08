@@ -20,5 +20,7 @@ def notifications_context(request):
 
     from core.notifications import get_notifications
 
+    from django.conf import settings
+
     items, total = get_notifications(request.user)
-    return {'notifications': items, 'notification_count': total}
+    return {'notifications': items, 'notification_count': total, 'vapid_public_key': settings.VAPID_PUBLIC_KEY}

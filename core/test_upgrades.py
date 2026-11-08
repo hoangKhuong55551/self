@@ -250,7 +250,7 @@ class CalendarTests(BaseCase):
             Debt.objects.create(user=self.user, person=f'P{i}', amount=Decimal('10'), due_date=self.today)
         from core.calendar import month_events
         first = self.today.replace(day=1)
-        with self.assertNumQueries(6):  # task, mục tiêu, giao dịch định kỳ, khoản định kỳ, nợ, tiết kiệm; không thêm truy vấn theo từng khoản nợ
+        with self.assertNumQueries(7):  # task, mục tiêu, giao dịch định kỳ, khoản định kỳ, nợ, tiết kiệm, buổi học; không thêm truy vấn theo từng khoản nợ
             month_events(self.user, first, first + timedelta(days=27))
 
     def test_bad_month_falls_back_and_other_users_hidden(self):

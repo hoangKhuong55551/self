@@ -13,11 +13,12 @@ from django.urls import reverse
 from core.templatetags.core_tags import currency_vn
 
 KINDS = {
+    'class': ('Lịch học', 'bi-mortarboard', 'success'),
     'task': ('Task', 'bi-check2-square', 'primary'),
     'goal': ('Mục tiêu', 'bi-bullseye', 'warning'),
     'recurring': ('Định kỳ', 'bi-arrow-repeat', 'info'),
     'debt': ('Vay / cho mượn', 'bi-people', 'danger'),
-    'saving': ('Tiết kiệm', 'bi-piggy-bank', 'success'),
+    'saving': ('Tiết kiệm', 'bi-piggy-bank', 'warning'),
 }
 
 
@@ -25,10 +26,10 @@ def _vnd(value):
     return currency_vn(value) + ' đ'
 
 
-def _event(day, kind, title, subtitle='', url='', done=False):
+def _event(day, kind, title, subtitle='', url='', done=False, ref=None):
     label, icon, tone = KINDS[kind]
     return {'date': day, 'kind': kind, 'kind_label': label, 'title': title, 'subtitle': subtitle,
-            'icon': icon, 'tone': tone, 'url': url, 'done': done}
+            'icon': icon, 'tone': tone, 'url': url, 'done': done, 'ref': ref}
 
 
 def month_events(user, first, last):
@@ -40,7 +41,7 @@ def month_events(user, first, last):
     for t in Task.objects.filter(goal__user=user, due_date__range=[first, last]).select_related('goal'):
         when = f'{t.due_time:%H:%M} · ' if t.due_time else ''
         events.append(_event(t.due_date, 'task', t.title, when + t.goal.title,
-                             reverse('productivity:task_edit', args=[t.pk]), done=t.status == 'done'))
+                             reverse('productivity:task_edit', args=[t.pk]), done=t.status == 'done', ref=t.pk))
 
     for g in Goal.objects.filter(user=user, deadline__range=[first, last]).exclude(status='archived'):
         events.append(_event(g.deadline, 'goal', g.title, f'Hạn mục tiêu · {g.progress:.0f}%',
@@ -72,6 +73,12 @@ def month_events(user, first, last):
 
     for s in SavingGoal.objects.filter(user=user, deadline__range=[first, last]):
         events.append(_event(s.deadline, 'saving', s.name, 'Hạn quỹ tiết kiệm', reverse('finance:saving_goal_list')))
+
+    from academic.services_schedule import sessions_between
+    for day, s in sessions_between(user, first, last):
+        room = f' · {s.room}' if s.room else ''
+        events.append(_event(day, 'class', s.course.name, f'{s.start_time:%H:%M}–{s.end_time:%H:%M}{room}',
+                             reverse('academic:schedule')))
 
     events.sort(key=lambda e: (e['date'], e['done'], e['kind']))
     return events

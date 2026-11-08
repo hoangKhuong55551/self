@@ -59,4 +59,35 @@
         {% endfor %}
     </ul>
 </div>
+
+<div class="card mt-4" id="sync">
+    <div class="card-header"><i class="bi bi-arrow-repeat me-2 text-success"></i>Đồng bộ sang Google Calendar / điện thoại</div>
+    <div class="card-body">
+        {% if feed_url %}
+        <p class="small text-muted mb-2">Thêm link này vào ứng dụng lịch (đăng ký theo URL). Lịch tự cập nhật vài giờ một lần, gồm 30 ngày trước tới 6 tháng tới và lịch học hằng tuần.</p>
+        <div class="input-group mb-2">
+            <input type="text" class="form-control" id="feedUrl" value="{{ feed_url }}" readonly aria-label="Link lịch">
+            <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('feedUrl').value).then(() => showToast('Đã copy link lịch'))"><i class="bi bi-clipboard"></i> Copy</button>
+            <a class="btn btn-outline-secondary" href="{{ webcal_url }}"><i class="bi bi-box-arrow-up-right"></i> Mở bằng ứng dụng lịch</a>
+            <a class="btn btn-outline-secondary" href="{{ feed_url }}" download="lifeos.ics"><i class="bi bi-download"></i> Tải .ics</a>
+        </div>
+        <p class="small text-warning mb-3"><i class="bi bi-shield-exclamation me-1"></i>Ai có link này đều xem được lịch của bạn. Lỡ chia sẻ thì bấm “Đổi link”.</p>
+        <details class="small text-muted mb-3">
+            <summary>Cách thêm vào Google Calendar</summary>
+            <ol class="mt-2 mb-0">
+                <li>Mở calendar.google.com trên máy tính → “Lịch khác” → dấu + → “Từ URL”.</li>
+                <li>Dán link ở trên → “Thêm lịch”. Lịch xuất hiện trên điện thoại sau khi đồng bộ.</li>
+                <li>Google cần truy cập được link qua Internet: khi app chạy trên localhost thì dùng tải file .ics hoặc ứng dụng lịch trên cùng máy.</li>
+            </ol>
+        </details>
+        <div class="d-flex gap-2">
+            <form method="post" action="{% url 'core:calendar_token_reset' %}" onsubmit="return confirm('Đổi link? Ứng dụng lịch đang dùng link cũ sẽ ngừng cập nhật.')">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Đổi link</button></form>
+            <form method="post" action="{% url 'core:calendar_token_reset' %}">{% csrf_token %}<input type="hidden" name="action" value="disable"><button class="btn btn-sm btn-outline-danger">Tắt link</button></form>
+        </div>
+        {% else %}
+        <p class="small text-muted mb-3">Tạo một link bí mật để Google Calendar, lịch iPhone hay Outlook tự hiện hạn task, khoản định kỳ, hẹn trả nợ và lịch học.</p>
+        <form method="post" action="{% url 'core:calendar_token_reset' %}">{% csrf_token %}<button class="btn btn-sm btn-primary"><i class="bi bi-link-45deg me-1"></i>Tạo link lịch</button></form>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

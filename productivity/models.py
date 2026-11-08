@@ -230,7 +230,7 @@ class Habit(models.Model):
 
     @property
     def current_streak(self):
-        today = timezone.now().date()
+        today = timezone.localdate()
         streak = 0
         check_date = today
 
@@ -245,7 +245,7 @@ class Habit(models.Model):
         return streak
 
     def get_heatmap_data(self, days=365):
-        today = timezone.now().date()
+        today = timezone.localdate()
         start_date = today - timedelta(days=days)
 
         logs = self.logs.filter(
@@ -266,7 +266,7 @@ class HabitLog(models.Model):
         on_delete=models.CASCADE,
         related_name='logs'
     )
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     count = models.PositiveIntegerField(
         default=1,
         help_text="Số lần hoàn thành trong ngày"
