@@ -32,6 +32,9 @@ class PrivateStorage(FileSystemStorage):
 
 def private_storage():
     # Hàm (không phải instance) để migration không ghi cứng đường dẫn tuyệt đối của máy
+    if settings.FILE_STORAGE == 'db':
+        from core.storage import DatabaseStorage
+        return DatabaseStorage(private=True)
     return PrivateStorage()
 
 

@@ -8,3 +8,8 @@ nh3>=0.2,<0.4
 django-axes>=9.0,<10
 # Thông báo đẩy (Web Push, VAPID)
 pywebpush>=2.0,<3
+# Deploy (Render + Neon Postgres)
+gunicorn>=23,<24
+whitenoise>=6.7,<7
+dj-database-url>=2.2,<4
+psycopg[binary]>=3.2,<4

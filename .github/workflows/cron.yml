@@ -1,0 +1,21 @@
+name: Nhắc việc (cron)
+
+# Gọi vào app trên Render mỗi giờ từ 7h đến 23h giờ Việt Nam (UTC+7) để gửi nhắc việc
+# và xử lý khoản định kỳ đến hạn. Cần secret LIFEOS_CRON_URL = https://<web>.onrender.com/cron/<DJANGO_CRON_SECRET>/
+on:
+  schedule:
+    - cron: "5 0-16 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Gọi app
+        env:
+          URL: ${{ secrets.LIFEOS_CRON_URL }}
+        run: |
+          if [ -z "$URL" ]; then echo "Chưa đặt secret LIFEOS_CRON_URL, bỏ qua."; exit 0; fi
+          # Gói miễn phí của Render ngủ khi không dùng: lần gọi đầu có thể mất ~1 phút để thức dậy
+          curl --fail --silent --show-error --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors -X POST "$URL"

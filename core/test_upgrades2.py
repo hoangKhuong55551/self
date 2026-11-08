@@ -403,3 +403,66 @@ class FormHygieneTests(Base):
         with mock.patch('django.utils.timezone.now', return_value=fake):
             html = self.client.get(reverse('finance:transaction_list')).content.decode()
         self.assertIn('value="2026-03-10"', html)
+
+
+# ── Deploy: ảnh lưu trong database, đường link cron ──
+class DatabaseStorageTests(Base):
+    def test_save_open_delete_roundtrip(self):
+        from core.models import StoredFile
+        from core.storage import DatabaseStorage
+        store = DatabaseStorage()
+        name = store.save('avatars/a.png', SimpleUploadedFile('a.png', b'PNGDATA', content_type='image/png'))
+        name2 = store.save('avatars/a.png', SimpleUploadedFile('a.png', b'OTHER'))
+        self.assertNotEqual(name, name2)
+        self.assertEqual(store.open(name).read(), b'PNGDATA')
+        self.assertEqual(store.size(name), 7)
+        self.assertEqual(store.url(name), '/media/avatars/a.png')
+        store.delete(name)
+        self.assertFalse(store.exists(name))
+        self.assertEqual(StoredFile.objects.count(), 1)
+
+    def test_names_always_use_forward_slashes(self):
+        from core.storage import DatabaseStorage
+        name = DatabaseStorage().save('library\\covers\\c.jpg', SimpleUploadedFile('c.jpg', b'X'))
+        self.assertEqual(name, 'library/covers/c.jpg')
+        self.assertTrue(DatabaseStorage().exists('library/covers/c.jpg'))
+
+    def test_private_files_are_not_served_publicly(self):
+        from core.storage import DatabaseStorage
+        from core.views_deploy import db_media
+        from django.http import Http404
+        from django.test import RequestFactory
+        DatabaseStorage(private=True).save('receipts/1/x.jpg', SimpleUploadedFile('x.jpg', b'SECRET'))
+        DatabaseStorage().save('avatars/ok.png', SimpleUploadedFile('ok.png', b'PUBLIC', content_type='image/png'))
+        rf = RequestFactory()
+        with self.assertRaises(Http404):
+            db_media(rf.get('/'), 'receipts/1/x.jpg')
+        resp = db_media(rf.get('/'), 'avatars/ok.png')
+        self.assertEqual((resp.status_code, resp.content, resp['Content-Type']), (200, b'PUBLIC', 'image/png'))
+        with self.assertRaises(ValueError):
+            DatabaseStorage(private=True).url('receipts/1/x.jpg')
+
+
+SECRET = 'cron-secret-for-tests-1234567890'
+
+
+class CronTests(Base):
+    @override_settings(CRON_SECRET=SECRET)
+    def test_wrong_or_missing_secret_is_404(self):
+        self.client.logout()
+        self.assertEqual(self.client.post('/cron/wrong-secret-wrong-secret-xx/').status_code, 404)
+        with override_settings(CRON_SECRET=''):
+            self.assertEqual(self.client.post('/cron//').status_code, 404)
+
+    @override_settings(CRON_SECRET=SECRET, **VAPID)
+    def test_runs_reminders_and_subscriptions(self):
+        self.client.logout()
+        Subscription.objects.create(user=self.user, name='Netflix', amount=Decimal('100000'), wallet=self.wallet,
+                                    category=self.food, transaction_type='expense', billing_cycle='monthly',
+                                    start_date=self.today, next_billing_date=self.today)
+        with mock.patch('core.reminders.send_due_reminders', return_value=2) as sent:
+            resp = self.client.post(f'/cron/{SECRET}/')
+        self.assertEqual(resp.json(), {'ok': True, 'charged': 1, 'reminders': 2})
+        sent.assert_called_once()
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.balance, Decimal('900000'))

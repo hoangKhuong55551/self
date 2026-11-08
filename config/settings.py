@@ -7,6 +7,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,6 +34,11 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1' if not DEBUG else '*')
 CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
+# Render tự đặt biến này = tên miền của web (vd lifeos.onrender.com)
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
 
 # Application definition
 INSTALLED_APPS = [
@@ -54,6 +60,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Phục vụ file tĩnh khi chạy production (không cần nginx)
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -95,13 +103,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database - SQLite for development
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database: SQLite khi chạy trên máy; đặt DATABASE_URL (Postgres, vd Neon) khi deploy
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES = {'default': dj_database_url.parse(
+        DATABASE_URL, conn_max_age=60, conn_health_checks=True,
+        ssl_require=env_bool('DJANGO_DB_SSL', True),
+    )}
+    # An toàn cả khi dùng chuỗi kết nối qua pooler (PgBouncer) của Neon
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -127,6 +144,19 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 # File riêng tư (ảnh hoá đơn): không phục vụ qua URL tĩnh, chỉ qua view có kiểm tra quyền
 PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
+
+# Nơi lưu ảnh tải lên: 'filesystem' (thư mục media/) hoặc 'db' (trong database, cho host
+# không có ổ đĩa lâu dài như Render miễn phí). Xem core/storage.py
+FILE_STORAGE = os.environ.get('DJANGO_FILE_STORAGE', 'filesystem').strip().lower()
+STORAGES = {
+    'default': {'BACKEND': 'core.storage.DatabaseStorage' if FILE_STORAGE == 'db'
+                else 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage' if not DEBUG
+                    else 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+}
+
+# Khoá bí mật cho đường link /cron/<khoá>/ (máy hẹn giờ gọi vào để gửi nhắc việc, trừ tiền định kỳ)
+CRON_SECRET = os.environ.get('DJANGO_CRON_SECRET', '')
 
 # Web Push (thông báo đẩy). Tạo khoá: python manage.py generate_vapid_keys
 VAPID_PUBLIC_KEY = os.environ.get('DJANGO_VAPID_PUBLIC_KEY', '')
@@ -183,6 +213,9 @@ if 'test' in sys.argv[1:2]:
     AXES_ENABLED = False
     # DB test rollback sau mỗi test nhưng cache thì không, nên tắt cache để test không ảnh hưởng nhau
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}}
+    # Test không cần collectstatic: bỏ cảnh báo thiếu thư mục staticfiles của whitenoise
+    import warnings
+    warnings.filterwarnings('ignore', message='No directory at')
 
 # Bảo mật khi chạy production (DEBUG=False)
 if not DEBUG:

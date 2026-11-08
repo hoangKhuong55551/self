@@ -1,0 +1,40 @@
+# Render Blueprint: New → Blueprint → chọn repo này. Xem hướng dẫn trong DEPLOY.md
+services:
+  - type: web
+    name: lifeos
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: ./build.sh
+    # 1 tiến trình nhiều luồng: RAM gói miễn phí nhỏ, và cache trong bộ nhớ dùng chung được
+    startCommand: gunicorn config.wsgi:application --workers 1 --threads 4 --timeout 60
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_CRON_SECRET
+        generateValue: true
+      - key: DJANGO_VAPID_PUBLIC_KEY
+        sync: false
+      - key: DJANGO_VAPID_PRIVATE_KEY
+        sync: false
+      - key: DJANGO_VAPID_SUBJECT
+        sync: false
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_FILE_STORAGE
+        value: db
+      - key: DJANGO_BEHIND_PROXY
+        value: "True"
+      # Render đã tự chuyển http → https ở tầng ngoài
+      - key: DJANGO_SSL_REDIRECT
+        value: "False"
+      - key: DJANGO_HSTS_SECONDS
+        value: "31536000"
+      - key: DJANGO_ALLOW_REGISTRATION
+        value: "True"
+      - key: DJANGO_ADMIN_URL
+        sync: false

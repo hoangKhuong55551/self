@@ -173,3 +173,19 @@ class ReminderLog(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['user', 'key'], name='unique_reminder_per_user')]
+
+
+class StoredFile(models.Model):
+    """File lưu trong database (DJANGO_FILE_STORAGE=db), xem core/storage.py."""
+    name = models.CharField(max_length=255)
+    is_private = models.BooleanField(default=False)
+    content = models.BinaryField()
+    size = models.PositiveIntegerField(default=0)
+    content_type = models.CharField(max_length=100, default='application/octet-stream')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['name', 'is_private'], name='unique_stored_file_name')]
+
+    def __str__(self):
+        return self.name

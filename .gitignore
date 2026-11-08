@@ -24,3 +24,4 @@ ENV/
 
 # Ảnh hoá đơn (riêng tư)
 private_media/
+staticfiles/
