@@ -34,6 +34,17 @@
 4. Mở link `https://lifeos-xxxx.onrender.com` rồi **Đăng ký** tài khoản của bạn.
 5. Nếu app chỉ dành cho mình bạn: vào **Environment** trên Render, đổi `DJANGO_ALLOW_REGISTRATION` thành `False` rồi bấm Save. Render sẽ tự deploy lại.
 
+### Vào trang admin
+
+Gói Free của Render không có Shell, nên không chạy `createsuperuser` được. Thay vào đó:
+
+1. Đăng ký tài khoản trên web như bình thường.
+2. Trên Render, vào **Environment → Add Environment Variable**, thêm `DJANGO_SUPERUSER_USERNAME` = tên đăng nhập của bạn rồi bấm **Save**.
+3. Render tự deploy lại. Lúc build, tài khoản đó được cấp quyền admin.
+4. Vào `https://<web>.onrender.com/<DJANGO_ADMIN_URL>` để đăng nhập trang admin.
+
+Để nguyên biến này cũng không sao, vì lần build sau sẽ không làm gì thêm.
+
 ## 3. Chuyển dữ liệu từ máy lên
 
 1. Trên máy (`127.0.0.1:8000`): vào **Sao lưu → Tải file JSON**.

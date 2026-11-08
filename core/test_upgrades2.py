@@ -466,3 +466,27 @@ class CronTests(Base):
         sent.assert_called_once()
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.balance, Decimal('900000'))
+
+
+class EnsureSuperuserTests(Base):
+    def run_cmd(self, **env):
+        out = io.StringIO()
+        with mock.patch.dict('os.environ', env, clear=False):
+            call_command('ensure_superuser', stdout=out, stderr=out)
+        return out.getvalue()
+
+    def test_promotes_existing_user(self):
+        self.run_cmd(DJANGO_SUPERUSER_USERNAME='u2')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_staff and self.user.is_superuser)
+
+    def test_creates_user_only_with_strong_enough_password(self):
+        self.assertIn('Chưa có tài khoản', self.run_cmd(DJANGO_SUPERUSER_USERNAME='boss', DJANGO_SUPERUSER_PASSWORD='short'))
+        self.assertFalse(User.objects.filter(username='boss').exists())
+        self.run_cmd(DJANGO_SUPERUSER_USERNAME='boss', DJANGO_SUPERUSER_PASSWORD='a-long-password-123')
+        self.assertTrue(User.objects.get(username='boss').check_password('a-long-password-123'))
+
+    def test_noop_without_env(self):
+        with mock.patch.dict('os.environ', {'DJANGO_SUPERUSER_USERNAME': ''}):
+            call_command('ensure_superuser', stdout=io.StringIO())
+        self.assertFalse(User.objects.filter(is_superuser=True).exists())
