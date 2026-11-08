@@ -2131,3 +2131,64 @@ html.fx-ready .progress.fx-bar-wait .progress-bar { transform: scaleX(0); }
   color: var(--text-muted);
 }
 .push-panel[hidden] { display: none; }
+
+/* ─── iPhone / iPad: chừa tai thỏ, Dynamic Island, thanh Home ───
+   Khi mở từ "Thêm vào MH chính", thanh trạng thái trong suốt (black-translucent) nên trang vẽ
+   lên tận mép trên; vùng đó iOS giữ cho thanh trạng thái và không nhận lần bấm. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+html { -webkit-text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: transparent; }
+
+.app-topbar {
+  height: calc(var(--topbar-height) + var(--safe-top));
+  padding-top: var(--safe-top);
+  padding-right: calc(1.75rem + var(--safe-right));
+}
+.sidebar-brand {
+  height: calc(var(--topbar-height) + var(--safe-top));
+  padding-top: var(--safe-top);
+}
+.app-sidebar { padding-left: var(--safe-left); }
+.sidebar-footer { padding-bottom: calc(0.9rem + var(--safe-bottom)); }
+.cmdk { padding-top: calc(max(10vh, 1rem) + var(--safe-top)); }
+.fx-levelup { padding-top: calc(18vh + var(--safe-top)); }
+.modal-dialog { margin-top: calc(var(--bs-modal-margin, 1.75rem) + var(--safe-top)); }
+
+@media (max-width: 991.98px) {
+  .app-topbar {
+    padding-left: calc(1.25rem + var(--safe-left));
+    padding-right: calc(1.25rem + var(--safe-right));
+  }
+  .content-container {
+    padding-left: calc(1.25rem + var(--safe-left));
+    padding-right: calc(1.25rem + var(--safe-right));
+  }
+  .bottom-nav {
+    left: calc(0.75rem + var(--safe-left));
+    right: calc(0.75rem + var(--safe-right));
+  }
+  /* Thông báo nhỏ nằm trên thanh menu dưới, không bị che */
+  #toastContainer {
+    right: calc(1rem + var(--safe-right));
+    left: calc(1rem + var(--safe-left));
+    bottom: calc(5.5rem + var(--safe-bottom));
+    align-items: flex-end;
+  }
+}
+@media (max-width: 575.98px) {
+  .content-container {
+    padding-left: calc(1rem + var(--safe-left));
+    padding-right: calc(1rem + var(--safe-right));
+  }
+}
+
+/* iOS tự phóng to trang khi bấm vào ô nhập có chữ < 16px: giữ 16px trên màn hình cảm ứng */
+@media (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+  select, textarea { font-size: 16px !important; }
+}

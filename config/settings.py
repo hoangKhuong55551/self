@@ -152,7 +152,8 @@ PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
 
 # Nơi lưu ảnh tải lên: 'filesystem' (thư mục media/) hoặc 'db' (trong database, cho host
 # không có ổ đĩa lâu dài như Render miễn phí). Xem core/storage.py
-FILE_STORAGE = os.environ.get('DJANGO_FILE_STORAGE', 'filesystem').strip().lower()
+# Test luôn dùng thư mục tạm, không phụ thuộc .env
+FILE_STORAGE = 'filesystem' if TESTING else os.environ.get('DJANGO_FILE_STORAGE', 'filesystem').strip().lower()
 STORAGES = {
     'default': {'BACKEND': 'core.storage.DatabaseStorage' if FILE_STORAGE == 'db'
                 else 'django.core.files.storage.FileSystemStorage'},
