@@ -415,6 +415,10 @@ a { color: rgb(var(--bs-link-color-rgb)); }
   display: flex;
   flex-direction: column;
 }
+/* Khách chưa đăng nhập: không có sidebar, nội dung chiếm hết chiều ngang */
+.app-layout-guest .app-main { margin-left: 0; }
+.guest-brand { display: inline-flex; align-items: center; text-decoration: none; }
+
 
 .app-topbar {
   height: var(--topbar-height);
